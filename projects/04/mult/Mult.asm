@@ -14,31 +14,24 @@
     @R2
     M=0
 
-    // i=0
-    @i
-    M=0
-(LOOP)
-    // if i == R0 then goto END
-    @i
-    D=M
+    // if R0 == 0 then goto END
     @R0
-    D=D-M
+    D=M
     @END
     D;JEQ
 
-    // R2=R2+R1
+(LOOP)
+    // R2+=R1
     @R1
     D=M
     @R2
     M=M+D
 
-    // i++
-    @i
-    M=M+1
-
-    // goto LOOP
+    // if --R0 > 0 then goto LOOP
+    @R0
+    MD=M-1
     @LOOP
-    0;JMP
+    D;JGT
 (END)
     // goto END: ininite loop
     @END
