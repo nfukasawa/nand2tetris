@@ -33,11 +33,11 @@
     A=A+D
     M=0
     
-    // if n >= 0 then goto CLEAR_LOOP
+    // if n > 0 then goto CLEAR_LOOP
     @CLEAR_LOOP
-    D;JGE
+    D;JGT
 
-    // go to LOOP
+    // goto LOOP
     @LOOP
     0;JMP
     
@@ -55,10 +55,10 @@
     A=A+D
     M=-1
 
-    // if n >= 0 then goto FILL_LOOP
+    // if n > 0 then goto FILL_LOOP
     @FILL_LOOP
-    D;JGE
+    D;JGT
 
-    // go to LOOP
+    // goto LOOP
     @LOOP
     0;JMP
