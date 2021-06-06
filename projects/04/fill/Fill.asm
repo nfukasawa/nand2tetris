@@ -12,53 +12,55 @@
 // the screen should remain fully clear as long as no key is pressed.
 
 // Put your code here.
-(LOOP)
-    // if @KBD > 0 then goto FILL
+(ENTRY)
+    // @pos = @SCREEN
+    @SCREEN
+    D=A
+    @pos
+    M=D
+
+    // if @KBD > 0 then goto @FILL
     @KBD
     D=M
     @FILL
     D;JGT
 
 (CLEAR)
-    // n = 512*256/16
-    @8192
-    D=A
-
-(CLEAR_LOOP)
-    // n--
-    D=D-1
-
-    // *(@SCREEN+n)=0x0000
-    @SCREEN
-    A=A+D
+    // @color=0x0000
+    @color
     M=0
-    
-    // if n > 0 then goto CLEAR_LOOP
-    @CLEAR_LOOP
-    D;JGT
 
-    // goto LOOP
+    // goto @LOOP
     @LOOP
     0;JMP
-    
+
 (FILL)
-    // n = 512*256/16
-    @8192
-    D=A
-
-(FILL_LOOP)
-    // n--
-    D=D-1
-
-    // *(@SCREEN+n)=0xFFFF
-    @SCREEN
-    A=A+D
+    // @color=0xFFFF
+    @color
     M=-1
 
-    // if n > 0 then goto FILL_LOOP
-    @FILL_LOOP
+(LOOP)
+    // *@pos = @color
+    @color
+    D=M
+    @pos
+    A=M
+    M=D
+
+    // @pos++
+    @pos
+    M=M+1
+
+    // if (512*256/16 + @SCREEN - @pos > 0) goto @LOOP
+    @8192
+    D=A
+    @SCREEN
+    D=D+A
+    @pos
+    D=D-M  
+    @LOOP
     D;JGT
 
-    // goto LOOP
-    @LOOP
+    // goto @ENTRY
+    @ENTRY
     0;JMP
