@@ -51,7 +51,7 @@
     @pos
     M=M+1
 
-    // if (512*256/16 + @SCREEN - @pos > 0) goto @LOOP
+    // if 512*256/16 + @SCREEN - @pos > 0 then goto @LOOP
     @8192
     D=A
     @SCREEN
