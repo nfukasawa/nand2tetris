@@ -10,29 +10,30 @@
 // R0 >= 0, R1 >= 0, and R0*R1 < 32768.
 
 // Put your code here.
-    // R2=0
+    // @R2=0
     @R2
     M=0
 
-    // if R0 == 0 then goto END
+    // if @R0 == 0 then goto @END
     @R0
     D=M
     @END
     D;JEQ
 
 (LOOP)
-    // R2+=R1
+    // @R2 += @R1
     @R1
     D=M
     @R2
     M=M+D
 
-    // if --R0 > 0 then goto LOOP
+    // if --@R0 > 0 then goto @LOOP
     @R0
     MD=M-1
     @LOOP
     D;JGT
+
 (END)
-    // goto END: ininite loop
+    // goto @END: ininite loop
     @END
     0;JMP

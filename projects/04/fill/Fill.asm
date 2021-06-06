@@ -19,13 +19,13 @@
     @pos
     M=D
 
-    // if @KBD > 0 then goto @FILL
+    // if @KBD > 0 then goto @BLACK
     @KBD
     D=M
-    @FILL
+    @BLACK
     D;JGT
 
-(CLEAR)
+(WHITE)
     // @color=0x0000
     @color
     M=0
@@ -34,7 +34,7 @@
     @LOOP
     0;JMP
 
-(FILL)
+(BLACK)
     // @color=0xFFFF
     @color
     M=-1
@@ -52,7 +52,7 @@
     M=M+1
 
     // if 512*256/16 + @SCREEN - @pos > 0 then goto @LOOP
-    @8192
+    @8192 // 512*256/16 = 8192
     D=A
     @SCREEN
     D=D+A
