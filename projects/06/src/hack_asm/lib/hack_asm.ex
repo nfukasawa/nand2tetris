@@ -3,8 +3,8 @@ defmodule HackAsm do
     code = File.open!(src)
 
     try do
-      {cmds, labels, vars} = IO.stream(code, :line) |> HackAsmParser.parse()
-      code = HackAsmCode.generate(cmds, labels, vars) |> Enum.join("\n")
+      {cmds, labels} = IO.stream(code, :line) |> HackAsmParser.parse()
+      code = HackAsmCode.generate(cmds, labels) |> Enum.join("\n")
       File.write!(dest, code)
     after
       File.close(code)
@@ -16,9 +16,9 @@ defmodule HackAsmParser do
   def parse(raw_lines) do
     lines = raw_lines |> normalize_lines()
 
-    {cmds, labels, vars, _} =
+    {cmds, labels, _} =
       lines
-      |> Enum.reduce({[], %{}, %{}, 0}, fn line, {cmds, labels, vars, addr} ->
+      |> Enum.reduce({[], %{}, 0}, fn line, {cmds, labels, addr} ->
         {cmd, next_addr} = line |> parse_line(addr)
 
         next_cmds =
@@ -30,27 +30,17 @@ defmodule HackAsmParser do
 
         next_labels =
           case cmd do
-            %{type: :l, label: label, address: addr} -> Map.put(labels, label, addr)
-            _ -> labels
-          end
-
-        next_vars =
-          case cmd do
-            %{type: :a, symbol: sym} ->
-              if Map.has_key?(vars, sym) do
-                vars
-              else
-                Map.put(vars, sym, Kernel.map_size(vars) + 0x0010)
-              end
+            %{type: :l, label: label, address: addr} ->
+              Map.put(labels, label, addr)
 
             _ ->
-              vars
+              labels
           end
 
-        {next_cmds, next_labels, next_vars, next_addr}
+        {next_cmds, next_labels, next_addr}
       end)
 
-    {cmds, labels, vars}
+    {cmds, labels}
   end
 
   defp normalize_lines(raw_lines) do
@@ -153,42 +143,46 @@ defmodule HackAsmParser do
 end
 
 defmodule HackAsmCode do
-  def generate(cmds, labels, vars) do
-    cmds
-    |> Enum.reduce([], fn %{cmd: %{type: ty}} = line, codes ->
-      code =
-        case ty do
-          :a -> a_cmd(line, labels, vars)
-          :c -> c_cmd(line)
-        end
+  def generate(cmds, labels) do
+    {ret, _} =
+      cmds
+      |> Enum.reduce({[], %{}}, fn %{cmd: %{type: ty}} = line, {codes, vars} ->
+        {code, new_vars} =
+          case ty do
+            :a -> a_cmd(line, labels, vars)
+            :c -> {c_cmd(line), vars}
+          end
 
-      codes ++ [code]
-    end)
+        {codes ++ [code], new_vars}
+      end)
+
+    ret
   end
 
-  defp a_cmd(%{cmd: %{type: :a, value: val}}, _labels, _vars) do
+  defp a_cmd(%{cmd: %{type: :a, value: val}}, _labels, vars) do
     v = val |> Integer.to_string(2) |> String.pad_leading(15, "0")
-    "0#{v}"
+    {"0#{v}", vars}
   end
 
-  defp a_cmd(%{cmd: %{type: :a, symbol: sym}} = line, labels, vars) do
-    val =
+  defp a_cmd(%{cmd: %{type: :a, symbol: sym}}, labels, vars) do
+    {val, vars} =
       case map_label(sym, labels) do
         nil ->
           case vars[sym] do
             nil ->
-              raise "unknown label or variable #{sym}: line: #{line[:line]}, code: #{line[:raw_code]}"
+              val = Kernel.map_size(vars) + 0x0010
+              {val, Map.put(vars, sym, val)}
 
             v ->
-              v
+              {v, vars}
           end
 
         v ->
-          v
+          {v, vars}
       end
 
     v = val |> Integer.to_string(2) |> String.pad_leading(15, "0")
-    "0#{v}"
+    {"0#{v}", vars}
   end
 
   defp c_cmd(%{cmd: %{type: :c, comp: comp, dest: dest, jump: jump}} = line) do
@@ -259,35 +253,30 @@ defmodule HackAsmCode do
 
   defp map_label(sym, labels) do
     case sym do
-      "SP" ->
-        0
-
-      "LCL" ->
-        1
-
-      "ARG" ->
-        2
-
-      "THIS" ->
-        3
-
-      "THAT" ->
-        4
-
-      "R" <> n ->
-        case Integer.parse(n) do
-          {i, _} when i >= 0 and i <= 15 -> i
-          _ -> nil
-        end
-
-      "SCREEN" ->
-        16384
-
-      "KBD" ->
-        24576
-
-      sym ->
-        labels[sym]
+      "SP" -> 0
+      "LCL" -> 1
+      "ARG" -> 2
+      "THIS" -> 3
+      "THAT" -> 4
+      "R0" -> 0
+      "R1" -> 1
+      "R2" -> 2
+      "R3" -> 3
+      "R4" -> 4
+      "R5" -> 5
+      "R6" -> 6
+      "R7" -> 7
+      "R8" -> 8
+      "R9" -> 9
+      "R10" -> 10
+      "R11" -> 11
+      "R12" -> 12
+      "R13" -> 13
+      "R14" -> 14
+      "R15" -> 15
+      "SCREEN" -> 16384
+      "KBD" -> 24576
+      sym -> labels[sym]
     end
   end
 end
