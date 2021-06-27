@@ -1,3 +1,35 @@
+defmodule HackAsm.CLI do
+  def main(args) do
+    {src, out} = args |> parse_args
+    HackAsm.assemble(src, out)
+  end
+
+  defp parse_args(args) do
+    {opts, args, _} =
+      args
+      |> OptionParser.parse(strict: [out: :string], aliases: [o: :out])
+
+    out =
+      case opts do
+        [out: out] -> out
+        _ -> usage()
+      end
+
+    src =
+      case Enum.count(args) do
+        1 -> List.first(args)
+        _ -> usage()
+      end
+
+    {src, out}
+  end
+
+  defp usage() do
+    IO.puts("usage: ./hack_asm -o <out> <source>")
+    exit(1)
+  end
+end
+
 defmodule HackAsm do
   def assemble(src, dest) do
     code = File.open!(src)
@@ -278,37 +310,5 @@ defmodule HackAsmCode do
       "KBD" -> 24576
       sym -> labels[sym]
     end
-  end
-end
-
-defmodule HackAsm.CLI do
-  def main(args) do
-    {src, out} = args |> parse_args
-    HackAsm.assemble(src, out)
-  end
-
-  defp parse_args(args) do
-    {opts, args, _} =
-      args
-      |> OptionParser.parse(strict: [out: :string], aliases: [o: :out])
-
-    out =
-      case opts do
-        [out: out] -> out
-        _ -> usage()
-      end
-
-    src =
-      case Enum.count(args) do
-        1 -> List.first(args)
-        _ -> usage()
-      end
-
-    {src, out}
-  end
-
-  defp usage() do
-    IO.puts("usage: ./hack_asm -o <out> <source>")
-    exit(1)
   end
 end
