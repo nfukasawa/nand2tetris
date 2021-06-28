@@ -16,8 +16,8 @@ defmodule HackAsm.CLI do
       end
 
     src =
-      case Enum.count(args) do
-        1 -> List.first(args)
+      case args do
+        [a] -> a
         _ -> usage()
       end
 
