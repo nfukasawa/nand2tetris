@@ -10,39 +10,41 @@ import (
 	"strings"
 )
 
-type CommandParser struct {
+type Parser struct {
 	scanner *bufio.Scanner
+	src     string
 	line    int
 }
 
-func NewCommandParser(src string) (*CommandParser, error) {
+func NewParser(src string) (*Parser, error) {
 	file, err := os.Open(src)
 	if err != nil {
 		return nil, err
 	}
 
-	return &CommandParser{
+	return &Parser{
 		scanner: bufio.NewScanner(file),
+		src:     src,
 		line:    0,
 	}, nil
 }
 
-func (p *CommandParser) NextCommand() (cmd Command, err error) {
+func (p *Parser) NextCommand() (cmd Command, err error) {
 	args, line, err := p.nextLine()
 	if errors.Is(err, io.EOF) {
 		return cmd, err
 	}
 	if err != nil {
-		return cmd, fmt.Errorf("error line %d: %v", line, err)
+		return cmd, fmt.Errorf("error %s:%d: %v", p.src, line, err)
 	}
 	cmd, err = p.mapCommand(args)
 	if err != nil {
-		return cmd, fmt.Errorf("error line %d: %v", line, err)
+		return cmd, fmt.Errorf("error %s:%d: %v", p.src, line, err)
 	}
 	return cmd, err
 }
 
-func (p *CommandParser) nextLine() (args []string, line int, err error) {
+func (p *Parser) nextLine() (args []string, line int, err error) {
 	for {
 		p.line++
 		if !p.scanner.Scan() {
@@ -73,7 +75,7 @@ func (p *CommandParser) nextLine() (args []string, line int, err error) {
 	return args, p.line, nil
 }
 
-func (p *CommandParser) mapCommand(args []string) (cmd Command, err error) {
+func (p *Parser) mapCommand(args []string) (cmd Command, err error) {
 	if len(args) == 0 {
 		return cmd, fmt.Errorf("command empty")
 	}
@@ -110,14 +112,14 @@ func (p *CommandParser) mapCommand(args []string) (cmd Command, err error) {
 	}
 }
 
-func (p *CommandParser) mapArithmeticCommand(op ArithmeticOperation, args []string) (cmd Command, err error) {
+func (p *Parser) mapArithmeticCommand(op ArithmeticOperation, args []string) (cmd Command, err error) {
 	if len(args) != 0 {
 		return cmd, fmt.Errorf("arithmetic command takes no arguments")
 	}
 	return Command{Type: CmdArithmetic, ArithmeticOp: op}, nil
 }
 
-func (p *CommandParser) mapMemoryCommand(ty CommandType, args []string) (cmd Command, err error) {
+func (p *Parser) mapMemoryCommand(ty CommandType, args []string) (cmd Command, err error) {
 	if len(args) != 2 {
 		return cmd, fmt.Errorf("memory command takes 2 arguments")
 	}

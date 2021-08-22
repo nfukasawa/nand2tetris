@@ -26,7 +26,7 @@ func main() {
 		panic(err)
 	}
 	for _, file := range files {
-		parser, err := vm.NewCommandParser(file)
+		parser, err := vm.NewParser(file)
 		if err != nil {
 			panic(err)
 		}
