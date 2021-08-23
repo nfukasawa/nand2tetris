@@ -15,31 +15,69 @@ import (
 
 type opts struct {
 	Inputs []string `short:"i" long:"in" required:"true" description:"input file or directory path"`
+	Output string   `short:"o" long:"out" required:"true" description:"output file or path"`
+	Debug  bool     `short:"d" long:"debug"  description:"enable debug mode"`
 }
 
 func main() {
 	var opts opts
-	flags.Parse(&opts)
+	if _, err := flags.Parse(&opts); err != nil {
+		errExit(nil)
+	}
 
-	files, err := collectSourceFiles(opts.Inputs)
+	var err error
+
+	srcs, err := collectSourceFiles(opts.Inputs)
 	if err != nil {
-		panic(err)
+		errExit(err)
 	}
-	for _, file := range files {
-		parser, err := vm.NewParser(file)
+
+	out, err := os.OpenFile(opts.Output, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		errExit(err)
+	}
+	defer func() {
+		out.Close()
 		if err != nil {
-			panic(err)
+			os.Remove(opts.Output)
 		}
-		for {
-			_, err := parser.NextCommand()
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			if err != nil {
-				panic(err)
-			}
+	}()
+
+	trans, err := vm.NewTranslator(out)
+	if err != nil {
+		errExit(err)
+	}
+	trans.Debug = opts.Debug
+
+	for _, src := range srcs {
+		if err := translateSourceFile(src, trans); err != nil {
+			errExit(err)
 		}
 	}
+}
+
+func translateSourceFile(src string, trans *vm.Translator) error {
+	file, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	t := trans.File(strings.TrimSuffix(filepath.Base(src), ".vm"))
+	parser := vm.NewParser(src, file)
+	for {
+		cmd, err := parser.NextCommand()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if err := t.Command(cmd); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func collectSourceFiles(inputs []string) ([]string, error) {
@@ -61,5 +99,15 @@ func collectSourceFiles(inputs []string) ([]string, error) {
 			srcs = append(srcs, in)
 		}
 	}
+	if len(srcs) == 0 {
+		return nil, fmt.Errorf(".vm file not found in: %v", inputs)
+	}
 	return srcs, nil
+}
+
+func errExit(err error) {
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(1)
 }

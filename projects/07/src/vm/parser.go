@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -16,17 +15,12 @@ type Parser struct {
 	line    int
 }
 
-func NewParser(src string) (*Parser, error) {
-	file, err := os.Open(src)
-	if err != nil {
-		return nil, err
-	}
-
+func NewParser(srcPath string, r io.Reader) *Parser {
 	return &Parser{
-		scanner: bufio.NewScanner(file),
-		src:     src,
+		scanner: bufio.NewScanner(r),
+		src:     srcPath,
 		line:    0,
-	}, nil
+	}
 }
 
 func (p *Parser) NextCommand() (cmd Command, err error) {
@@ -82,24 +76,8 @@ func (p *Parser) mapCommand(args []string) (cmd Command, err error) {
 	switch args[0] {
 
 	// arithmetic
-	case "add":
-		return p.mapArithmeticCommand(OpAdd, args[1:])
-	case "sub":
-		return p.mapArithmeticCommand(OpSub, args[1:])
-	case "neg":
-		return p.mapArithmeticCommand(OpNeg, args[1:])
-	case "eq":
-		return p.mapArithmeticCommand(OpEq, args[1:])
-	case "gt":
-		return p.mapArithmeticCommand(OpGt, args[1:])
-	case "lt":
-		return p.mapArithmeticCommand(OpLt, args[1:])
-	case "and":
-		return p.mapArithmeticCommand(OpAnd, args[1:])
-	case "or":
-		return p.mapArithmeticCommand(OpOr, args[1:])
-	case "not":
-		return p.mapArithmeticCommand(OpNot, args[1:])
+	case "add", "sub", "neg", "eq", "gt", "lt", "and", "or", "not":
+		return p.mapArithmeticCommand(ArithmeticOperation(args[0]), args[1:])
 
 	// memory access
 	case "push":
@@ -108,7 +86,7 @@ func (p *Parser) mapCommand(args []string) (cmd Command, err error) {
 		return p.mapMemoryCommand(CmdPop, args[1:])
 
 	default:
-		return cmd, fmt.Errorf("unknown command")
+		return cmd, fmt.Errorf("unknown command: %s", args[0])
 	}
 }
 
@@ -126,22 +104,8 @@ func (p *Parser) mapMemoryCommand(ty CommandType, args []string) (cmd Command, e
 
 	var seg MemorySegment
 	switch args[0] {
-	case "argument":
-		seg = SegArgument
-	case "local":
-		seg = SegLocal
-	case "static":
-		seg = SegStatic
-	case "constant":
-		seg = SegConstant
-	case "this":
-		seg = SegThis
-	case "that":
-		seg = SegThat
-	case "pointer":
-		seg = SegPointer
-	case "temp":
-		seg = SegTemp
+	case "argument", "local", "static", "constant", "this", "that", "pointer", "temp":
+		seg = MemorySegment(args[0])
 	default:
 		return cmd, fmt.Errorf("unknown memory segment: %s", args[0])
 	}
@@ -149,6 +113,17 @@ func (p *Parser) mapMemoryCommand(ty CommandType, args []string) (cmd Command, e
 	index, err := strconv.ParseUint(args[1], 10, 64)
 	if err != nil {
 		return cmd, fmt.Errorf("invalid index: %s", args[1])
+	}
+
+	// validations
+	if seg == SegPointer && index != 0 && index != 1 {
+		return cmd, fmt.Errorf("pointer index must be 0 or 1")
+	}
+	if seg == SegTemp && index > 6 {
+		return cmd, fmt.Errorf("temp index must be less than 7")
+	}
+	if ty == CmdPop && seg == SegConstant {
+		return cmd, fmt.Errorf("pop command does not accept constant segment")
 	}
 
 	return Command{Type: ty, MemorySegment: seg, MemoryIndex: index}, nil
