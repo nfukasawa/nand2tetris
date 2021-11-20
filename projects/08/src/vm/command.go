@@ -34,6 +34,12 @@ func (c *Command) String() string {
 		return string(c.Arithmetic.Operation)
 	case CmdPush, CmdPop:
 		return fmt.Sprintf("%s %s %d", c.Type, c.Memory.Segment, c.Memory.Index)
+	case CmdLabel, CmdGoto, CmdIfGoto:
+		return fmt.Sprintf("%s %s", c.Type, c.Label.Label)
+	case CmdFunction, CmdCall:
+		return fmt.Sprintf("%s %s %d", c.Type, c.Function.Name, c.Function.Num)
+	case CmdReturn:
+		return string(CmdReturn)
 	default:
 		return ""
 	}

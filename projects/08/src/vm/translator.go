@@ -47,6 +47,24 @@ func (t *FileTranslator) Command(cmd Command) error {
 		return t.push(cmd.Memory)
 	case CmdPop:
 		return t.pop(cmd.Memory)
+	case CmdLabel:
+		// TODO
+		return nil
+	case CmdGoto:
+		// TODO
+		return nil
+	case CmdIfGoto:
+		// TODO
+		return nil
+	case CmdFunction:
+		// TODO
+		return nil
+	case CmdReturn:
+		// TODO
+		return nil
+	case CmdCall:
+		// TODO
+		return nil
 	default:
 		return fmt.Errorf("unimplemented command type: %v", cmd.Type)
 	}
