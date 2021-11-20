@@ -22,19 +22,22 @@ type opts struct {
 func main() {
 	var opts opts
 	if _, err := flags.Parse(&opts); err != nil {
-		errExit(nil)
+		fmt.Println(err)
+		return
 	}
 
 	var err error
 
 	srcs, err := collectSourceFiles(opts.Inputs)
 	if err != nil {
-		errExit(err)
+		fmt.Println(err)
+		return
 	}
 
 	out, err := os.OpenFile(opts.Output, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		errExit(err)
+		fmt.Println(err)
+		return
 	}
 	defer func() {
 		out.Close()
@@ -45,13 +48,15 @@ func main() {
 
 	trans, err := vm.NewTranslator(out)
 	if err != nil {
-		errExit(err)
+		fmt.Println(err)
+		return
 	}
 	trans.Debug = opts.Debug
 
 	for _, src := range srcs {
-		if err := translateSourceFile(src, trans); err != nil {
-			errExit(err)
+		if err = translateSourceFile(src, trans); err != nil {
+			fmt.Println(err)
+			return
 		}
 	}
 }
@@ -103,11 +108,4 @@ func collectSourceFiles(inputs []string) ([]string, error) {
 		return nil, fmt.Errorf(".vm file not found in: %v", inputs)
 	}
 	return srcs, nil
-}
-
-func errExit(err error) {
-	if err != nil {
-		fmt.Println(err)
-	}
-	os.Exit(1)
 }
