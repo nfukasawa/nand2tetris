@@ -33,7 +33,7 @@ const (
 	CmdPop        CommandType = "pop"
 	CmdLabel      CommandType = "TODO"
 	CmdGoto       CommandType = "TODO"
-	CmdIf         CommandType = "TODO"
+	CmdIfGoto     CommandType = "TODO"
 	CmdFunction   CommandType = "TODO"
 	CmdReturn     CommandType = "TODO"
 	CmdCall       CommandType = "TODO"
