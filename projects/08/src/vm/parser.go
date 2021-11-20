@@ -145,14 +145,8 @@ func (p *Parser) mapLabelCommand(ty CommandType, args []string) (cmd Command, er
 	label := args[0]
 
 	// validation
-	for i, c := range label {
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == ',' || c == ':' {
-			continue
-		}
-		if i != 0 && c >= '0' && c <= '9' {
-			continue
-		}
-		return cmd, fmt.Errorf("%s command invalid label '%c' at %d", label, c, i)
+	if err := p.validateSymbol(ty, label); err != nil {
+		return cmd, err
 	}
 
 	return Command{
@@ -171,7 +165,11 @@ func (p *Parser) mapFunctionCommand(ty CommandType, args []string) (cmd Command,
 	name := args[0]
 	numStr := args[1]
 
-	// validation
+	// validations
+	if err := p.validateSymbol(ty, name); err != nil {
+		return cmd, err
+	}
+
 	num, err := strconv.ParseUint(numStr, 10, 64)
 	if err != nil {
 		return cmd, fmt.Errorf("%s command 2nd arg is must be number", ty)
@@ -184,4 +182,17 @@ func (p *Parser) mapFunctionCommand(ty CommandType, args []string) (cmd Command,
 			Num:  num,
 		},
 	}, nil
+}
+
+func (p *Parser) validateSymbol(ty CommandType, sym string) error {
+	for i, c := range sym {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '.' || c == ':' {
+			continue
+		}
+		if i != 0 && c >= '0' && c <= '9' {
+			continue
+		}
+		return fmt.Errorf("symbol \"%s\": invalid char '%c' at %d", sym, c, i)
+	}
+	return nil
 }
