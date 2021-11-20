@@ -67,3 +67,25 @@ const (
 	SegPointer  MemorySegment = "pointer"
 	SegTemp     MemorySegment = "temp"
 )
+
+func CommandTypeFromString(str string) CommandType {
+	switch str {
+	case string(OpAdd), string(OpSub), string(OpNeg), string(OpEq), string(OpGt), string(OpLt), string(OpAnd), string(OpOr), string(OpNot):
+		return CmdArithmetic
+	case string(CmdPush):
+		return CmdPush
+	case string(CmdPop):
+		return CmdPop
+	default:
+		return CmdNone
+	}
+}
+
+func MemorySegmentFromString(str string) MemorySegment {
+	switch str {
+	case string(SegArgument), string(SegLocal), string(SegStatic), string(SegConstant), string(SegThis), string(SegThat), string(SegPointer), string(SegTemp):
+		return MemorySegment(str)
+	default:
+		return SegNone
+	}
+}

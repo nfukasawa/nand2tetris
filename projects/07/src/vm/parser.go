@@ -73,17 +73,16 @@ func (p *Parser) mapCommand(args []string) (cmd Command, err error) {
 	if len(args) == 0 {
 		return cmd, fmt.Errorf("command empty")
 	}
-	switch args[0] {
+
+	switch ty := CommandTypeFromString(args[0]); ty {
 
 	// arithmetic
-	case "add", "sub", "neg", "eq", "gt", "lt", "and", "or", "not":
+	case CmdArithmetic:
 		return p.mapArithmeticCommand(ArithmeticOperation(args[0]), args[1:])
 
 	// memory access
-	case "push":
-		return p.mapMemoryCommand(CmdPush, args[1:])
-	case "pop":
-		return p.mapMemoryCommand(CmdPop, args[1:])
+	case CmdPush, CmdPop:
+		return p.mapMemoryCommand(ty, args[1:])
 
 	default:
 		return cmd, fmt.Errorf("unknown command: %s", args[0])
@@ -102,11 +101,8 @@ func (p *Parser) mapMemoryCommand(ty CommandType, args []string) (cmd Command, e
 		return cmd, fmt.Errorf("memory command takes 2 arguments")
 	}
 
-	var seg MemorySegment
-	switch args[0] {
-	case "argument", "local", "static", "constant", "this", "that", "pointer", "temp":
-		seg = MemorySegment(args[0])
-	default:
+	seg := MemorySegmentFromString(args[0])
+	if seg == SegNone {
 		return cmd, fmt.Errorf("unknown memory segment: %s", args[0])
 	}
 
