@@ -271,8 +271,6 @@ func (t *Translator) function(args *FunctionArgs, file *FileTranslator) []string
 }
 
 func (t *Translator) ret(file *FileTranslator) []string {
-	file.functionName = ""
-
 	framePos := "@14"
 	retPos := "@15"
 
