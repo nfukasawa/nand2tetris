@@ -1,6 +1,8 @@
 package vm
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Command struct {
 	Type       CommandType
@@ -17,6 +19,7 @@ type ArithmeticArgs struct {
 type MemoryArgs struct {
 	Segment MemorySegment
 	Index   uint64
+	Label   string
 }
 
 type LabelArgs struct {

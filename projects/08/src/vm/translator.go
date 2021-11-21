@@ -38,34 +38,38 @@ type FileTranslator struct {
 }
 
 func (t *FileTranslator) Command(cmd Command) error {
-	if t.debug {
-		t.writeAsm("// " + cmd.String())
-	}
+	var asm []string
 	switch cmd.Type {
 	case CmdArithmetic:
-		return t.arithmetic(cmd.Arithmetic)
+		asm = t.arithmetic(cmd.Arithmetic)
 	case CmdPush:
-		return t.push(cmd.Memory)
+		asm = t.push(cmd.Memory)
 	case CmdPop:
-		return t.pop(cmd.Memory)
+		asm = t.pop(cmd.Memory)
 	case CmdLabel:
-		return t.label(cmd.Label)
+		asm = t.label(cmd.Label)
 	case CmdGoto:
-		return t.goTo(cmd.Label)
+		asm = t.goTo(cmd.Label)
 	case CmdIfGoto:
-		return t.ifGoTo(cmd.Label)
+		asm = t.ifGoTo(cmd.Label)
 	case CmdFunction:
-		return t.function(cmd.Function)
+		asm = t.function(cmd.Function)
 	case CmdReturn:
-		return t.ret()
+		asm = t.ret()
 	case CmdCall:
-		return t.call(cmd.Function)
+		asm = t.call(cmd.Function)
 	default:
 		return fmt.Errorf("unimplemented command type: %v", cmd.Type)
 	}
+
+	if t.debug {
+		asm = append([]string{"// " + cmd.String()}, asm...)
+	}
+
+	return t.writeAsm(asm...)
 }
 
-func (t *FileTranslator) arithmetic(args *ArithmeticArgs) error {
+func (t *FileTranslator) arithmetic(args *ArithmeticArgs) []string {
 	switch op := args.Operation; op {
 	case OpNeg, OpNot:
 		return t.arith1Arg(op)
@@ -74,11 +78,12 @@ func (t *FileTranslator) arithmetic(args *ArithmeticArgs) error {
 	case OpEq, OpGt, OpLt:
 		return t.arithCmp(op)
 	default:
-		return fmt.Errorf("unknown arithmetic operation: %v", op)
+		fmt.Printf("unknown arithmetic operation: %v", op)
+		return nil
 	}
 }
 
-func (t *FileTranslator) arith1Arg(op ArithmeticOperation) error {
+func (t *FileTranslator) arith1Arg(op ArithmeticOperation) []string {
 	var cmd string
 	switch op {
 	case OpNeg:
@@ -86,10 +91,13 @@ func (t *FileTranslator) arith1Arg(op ArithmeticOperation) error {
 	case OpNot:
 		cmd = "M=!M"
 	}
-	return t.writeAsm("@SP", "A=M-1", cmd) // y=sp-1; cmd(*y)
+	return []string{
+		"@SP", "A=M-1", cmd, // y=sp-1; cmd(*y)
+	}
+
 }
 
-func (t *FileTranslator) arith2Args(op ArithmeticOperation) error {
+func (t *FileTranslator) arith2Args(op ArithmeticOperation) []string {
 	var cmd string
 	switch op {
 	case OpAdd:
@@ -101,12 +109,12 @@ func (t *FileTranslator) arith2Args(op ArithmeticOperation) error {
 	case OpOr:
 		cmd = "M=M|D"
 	}
-	return t.writeAsm(
+	return []string{
 		"@SP", "M=M-1", "A=M", "D=M", "A=A-1", cmd, // y=--sp; x=y-1; cmd(*x, *y)
-	)
+	}
 }
 
-func (t *FileTranslator) arithCmp(op ArithmeticOperation) error {
+func (t *FileTranslator) arithCmp(op ArithmeticOperation) []string {
 	label := t.uniqueLabel("CMP")
 
 	var cmd string
@@ -118,24 +126,24 @@ func (t *FileTranslator) arithCmp(op ArithmeticOperation) error {
 	case OpLt:
 		cmd = "D;JLT"
 	}
-	return t.writeAsm(
+	return []string{
 		"@SP", "M=M-1", "A=M", "D=M", "A=A-1", // y=--sp; x=y-1
-		"D=M-D",        // d=*x-*y
-		"M=-1",         // *y=true
-		"@"+label, cmd, // if cmd(d) goto @label
+		"D=M-D",          // d=*x-*y
+		"M=-1",           // *y=true
+		"@" + label, cmd, // if cmd(d) goto @label
 		"@SP", "A=M-1", "M=0", // *y=false
-		"("+label+")", // label
-	)
+		"(" + label + ")", // label
+	}
 }
 
-func (t *FileTranslator) push(args *MemoryArgs) error {
+func (t *FileTranslator) push(args *MemoryArgs) []string {
 	seg := args.Segment
 	index := args.Index
 
 	var cmds []string
 	switch seg {
 	case SegArgument, SegLocal, SegThis, SegThat:
-		cmds = []string{t.reservedSegPos(seg), "D=M", "@" + toStr(index), "A=D+A", "D=M"}
+		cmds = []string{t.reservedSegPos(seg), "D=M", "@" + t.pushLabel(args), "A=D+A", "D=M"}
 	case SegPointer:
 		cmds = []string{t.pointerSegPos(index), "D=M"}
 	case SegTemp:
@@ -143,38 +151,51 @@ func (t *FileTranslator) push(args *MemoryArgs) error {
 	case SegStatic:
 		cmds = []string{t.staticSegPos(index), "D=M"}
 	case SegConstant:
-		cmds = []string{"@" + toStr(index), "D=A"}
+		cmds = []string{"@" + t.pushLabel(args), "D=A"}
 	default:
-		return fmt.Errorf("unknown push memory segment: %v", seg)
+		fmt.Printf("unknown push memory segment: %v", seg)
+		return nil
 	}
-	return t.writeAsm(append(cmds, "@SP", "M=M+1", "A=M-1", "M=D")...) // *sp=*pos; sp++;
+	return append(
+		cmds, "@SP", "M=M+1", "A=M-1", "M=D", // *sp=*pos; sp++;
+	)
 }
 
-func (t *FileTranslator) pop(args *MemoryArgs) error {
+func (t *FileTranslator) pushLabel(args *MemoryArgs) string {
+	if args.Label != "" {
+		return args.Label
+	}
+	return toStr(args.Index)
+}
+
+func (t *FileTranslator) pop(args *MemoryArgs) []string {
 	seg := args.Segment
 	index := args.Index
 
+	var pos string
 	switch seg {
 	case SegArgument, SegLocal, SegThis, SegThat:
-		return t.writeAsm(
-			t.reservedSegPos(seg), "D=M", "@"+toStr(index), "D=D+A", "@R13", "M=D", // r13=pos+i
-			"@SP", "M=M-1", "A=M", "D=M", // sp--
-			"@R13", "A=M", "M=D", // *r13=*sp
-		)
-	}
-
-	var cmd string
-	switch seg {
+		pos = t.reservedSegPos(seg)
+		if index != 0 {
+			return []string{
+				pos, "D=M", "@" + toStr(index), "D=D+A", "@R13", "M=D", // r13=pos+i
+				"@SP", "M=M-1", "A=M", "D=M", // sp--
+				"@R13", "A=M", "M=D", // *r13=*sp
+			}
+		}
 	case SegPointer:
-		cmd = t.pointerSegPos(index)
+		pos = t.pointerSegPos(index)
 	case SegTemp:
-		cmd = t.tempSegPos(index)
+		pos = t.tempSegPos(index)
 	case SegStatic:
-		cmd = t.staticSegPos(index)
+		pos = t.staticSegPos(index)
 	default:
-		return fmt.Errorf("unknown pop memory segment: %v", seg)
+		fmt.Printf("unknown pop memory segment: %v", seg)
+		return nil
 	}
-	return t.writeAsm("@SP", "M=M-1", "A=M", "D=M", cmd, "M=D") // sp--; *pos=*sp
+	return []string{
+		"@SP", "M=M-1", "A=M", "D=M", pos, "M=D", // sp--; *pos=*sp
+	}
 }
 
 func (t *FileTranslator) reservedSegPos(seg MemorySegment) string {
@@ -211,59 +232,87 @@ func (t *FileTranslator) staticSegPos(index uint64) string {
 	return "@" + t.fileName + "." + toStr(index)
 }
 
-func (t *FileTranslator) label(args *LabelArgs) error {
-	return t.writeAsm("(" + t.scopedLabel(args) + ")") // (label)
+func (t *FileTranslator) label(args *LabelArgs) []string {
+	return []string{
+		"(" + t.scopedLabel(args) + ")", // (label)
+	}
 }
 
-func (t *FileTranslator) goTo(args *LabelArgs) error {
-	return t.writeAsm("@"+t.scopedLabel(args), "0;JMP") // goto @label
+func (t *FileTranslator) goTo(args *LabelArgs) []string {
+	return []string{
+		"@" + t.scopedLabel(args), "0;JMP", // goto @label
+	}
 }
 
-func (t *FileTranslator) ifGoTo(args *LabelArgs) error {
-	return t.writeAsm(
+func (t *FileTranslator) ifGoTo(args *LabelArgs) []string {
+	return []string{
 		"@SP", "M=M-1", "A=M", "D=M", // sp--
-		"@"+t.scopedLabel(args), "D;JNE", // if(*sp != 0) goto @label
-	)
+		"@" + t.scopedLabel(args), "D;JNE", // if(*sp != 0) goto @label
+	}
 }
 
-func (t *FileTranslator) function(args *FunctionArgs) error {
+func (t *FileTranslator) function(args *FunctionArgs) []string {
 	t.functionName = args.Name
 
 	asm := []string{"(" + args.Name + ")"}  // (f)
 	for i := uint64(0); i < args.Num; i++ { // repeat num times
 		asm = append(asm, "@SP", "M=M+1", "A=M-1", "M=0") // sp++; sp=0
 	}
-	return t.writeAsm(asm...)
+	return asm
 }
 
-func (t *FileTranslator) ret() error {
+func (t *FileTranslator) ret() []string {
 	t.functionName = ""
 
-	// FRAME = LCL
-	// RET = *(FRAME-5)
-	// *ARG = pop()
-	// SP = ARG+1
-	// THAT = *(FRAME-1)
-	// THIS = *(FRAME-2)
-	// ARG = *(FRAME-3)
-	// LCL = *(FRAME-4)
-	// goto RET
-	return nil
+	framePos := "@14"
+	retPos := "@15"
+
+	return concat(
+		[]string{
+			"@LCL", "D=M", framePos, "M=D", // FRAME = LCL
+			"@5", "A=D-A", "D=M", retPos, "M=D", // RET = *(FRAME-5)
+		},
+		t.pop(&MemoryArgs{Segment: SegArgument, Index: 0}), // *ARG = pop()
+		[]string{
+			"@ARG", "D=M+1", "@SP", "M=D", // SP = ARG+1
+		},
+		t.popFrame(framePos, SegThat),     // THAT = *(FRAME-1)
+		t.popFrame(framePos, SegThis),     // THIS = *(FRAME-2)
+		t.popFrame(framePos, SegArgument), // ARG = *(FRAME-3)
+		t.popFrame(framePos, SegLocal),    // LCL = *(FRAME-4)
+		[]string{
+			retPos, "A=M", "0;JMP", // goto RET
+		},
+	)
 }
 
-func (t *FileTranslator) call(args *FunctionArgs) error {
-	// label := t.uniqueLabel("RET")
+func (t *FileTranslator) popFrame(framePos string, seg MemorySegment) []string {
+	return []string{
+		framePos,
+		"D=M-1",
+		"AM=D",
+		"D=M",
+		t.reservedSegPos(seg),
+		"M=D",
+	}
+}
 
-	// push return-address
-	// push LCL
-	// push ARG
-	// push THIS
-	// push THAT
-	// ARG = SP-n-5
-	// LCL = SP
-	// goto f
-	// (return-address)
-	return nil
+func (t *FileTranslator) call(args *FunctionArgs) []string {
+	label := t.uniqueLabel("RET")
+
+	return concat(
+		t.push(&MemoryArgs{Segment: SegConstant, Label: label}), // push return-address
+		t.push(&MemoryArgs{Segment: SegLocal, Label: "SP"}),     // push LCL
+		t.push(&MemoryArgs{Segment: SegArgument, Label: "SP"}),  // push ARG
+		t.push(&MemoryArgs{Segment: SegThis, Label: "SP"}),      // push THIS
+		t.push(&MemoryArgs{Segment: SegThat, Label: "SP"}),      // push THAT
+		[]string{
+			"@SP", "D=M", "@" + toStr(5+args.Num), "D=D-A", t.reservedSegPos(SegArgument), "M=D", // ARG = SP-n-5
+			"@SP", "D=M", "@LCL", "M=D", // LCL = SP
+			"@" + args.Name, "0;JMP", // goto f
+			"(" + label + ")", // (return-address)
+		},
+	)
 }
 
 func (t *FileTranslator) uniqueLabel(namespace string) string {
@@ -281,18 +330,12 @@ func (t *FileTranslator) writeAsm(ops ...string) error {
 	return err
 }
 
-func concat(elms []interface{}) []string {
-	var strs []string
-	for _, elm := range elms {
-		switch elm := elm.(type) {
-		case string:
-			strs = append(strs, elm)
-		case []string:
-			strs = append(strs, elm...)
-		default:
-		}
+func concat(ss ...[]string) []string {
+	var ret []string
+	for _, s := range ss {
+		ret = append(ret, s...)
 	}
-	return strs
+	return ret
 }
 
 func toStr(i uint64) string {
