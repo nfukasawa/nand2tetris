@@ -191,10 +191,11 @@ func (t *Translator) pop(args *MemoryArgs, file *FileTranslator) []string {
 	var pos string
 	switch seg {
 	case SegArgument, SegLocal, SegThis, SegThat:
+		const regPos = "@R13"
 		return []string{
-			t.reservedSegPos(seg), "D=M", "@" + toStr(index), "D=D+A", "@R13", "M=D", // r13=pos+i
+			t.reservedSegPos(seg), "D=M", "@" + toStr(index), "D=D+A", regPos, "M=D", // x=pos+i
 			"@SP", "M=M-1", "A=M", "D=M", // sp--
-			"@R13", "A=M", "M=D", // *r13=*sp
+			regPos, "A=M", "M=D", // *x=*sp
 		}
 	case SegPointer:
 		pos = t.pointerSegPos(index)
@@ -275,15 +276,15 @@ func (t *Translator) function(args *FunctionArgs, file *FileTranslator) []string
 }
 
 func (t *Translator) ret(file *FileTranslator) []string {
-	framePos := "@14"
-	retPos := "@15"
+	const framePos = "@14"
+	const retPos = "@15"
 
 	return concat(
 		[]string{
-			"@LCL", "D=M", framePos, "M=D", // FRAME = LCL
+			t.reservedSegPos(SegLocal), "D=M", framePos, "M=D", // FRAME = LCL
 			"@5", "A=D-A", "D=M", retPos, "M=D", // RET = *(FRAME-5)
 			"@SP", "M=M-1", "A=M", "D=M", t.reservedSegPos(SegArgument), "A=M", "M=D", // *ARG = pop()
-			"@ARG", "D=M+1", "@SP", "M=D", // SP = ARG+1
+			t.reservedSegPos(SegArgument), "D=M+1", "@SP", "M=D", // SP = ARG+1
 		},
 		t.popFrame(framePos, SegThat),     // THAT = *(FRAME-1)
 		t.popFrame(framePos, SegThis),     // THIS = *(FRAME-2)
@@ -317,7 +318,7 @@ func (t *Translator) call(args *FunctionArgs, file *FileTranslator) []string {
 		t.push(&MemoryArgs{Segment: SegThat, Label: "SP"}, file),        // push THAT
 		[]string{
 			"@SP", "D=M", "@" + toStr(5+args.Num), "D=D-A", t.reservedSegPos(SegArgument), "M=D", // ARG = SP-n-5
-			"@SP", "D=M", "@LCL", "M=D", // LCL = SP
+			"@SP", "D=M", t.reservedSegPos(SegLocal), "M=D", // LCL = SP
 			"@" + args.Name, "0;JMP", // goto f
 			"(" + retAddr + ")", // (return-address)
 		},
