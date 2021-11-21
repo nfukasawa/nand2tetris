@@ -9,18 +9,15 @@ import (
 )
 
 type Translator struct {
-	out     io.Writer
-	fileNum int
-	Debug   bool
+	out   io.Writer
+	Debug bool
 }
 
 func NewTranslator(out io.Writer) (*Translator, error) {
-	return &Translator{out: out, fileNum: 0}, nil
+	return &Translator{out: out}, nil
 }
 
 func (t *Translator) File(fileName string) FileTranslator {
-	defer func() { t.fileNum++ }()
-
 	return FileTranslator{
 		fileName: fileName,
 		opIndex:  0,

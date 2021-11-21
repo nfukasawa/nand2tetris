@@ -22,7 +22,6 @@ type opts struct {
 func main() {
 	var opts opts
 	if _, err := flags.Parse(&opts); err != nil {
-		fmt.Println(err)
 		return
 	}
 

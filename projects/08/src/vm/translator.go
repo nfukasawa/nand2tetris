@@ -14,9 +14,14 @@ type Translator struct {
 	Debug      bool
 }
 
-func NewTranslator(out io.Writer, bootstrap bool) (*Translator, error) {
-	t := &Translator{out: out}
-	if bootstrap {
+type TranslatorOptions struct {
+	Out         io.Writer
+	NoBootstrap bool
+}
+
+func NewTranslator(opts TranslatorOptions) (*Translator, error) {
+	t := &Translator{out: opts.Out}
+	if !opts.NoBootstrap {
 		if err := t.writeAsm(t.bootstrap()...); err != nil {
 			return nil, err
 		}
@@ -32,7 +37,6 @@ func (t *Translator) File(fileName string) *FileTranslator {
 }
 
 func (t *Translator) command(cmd Command, file *FileTranslator) error {
-
 	var asm []string
 	switch cmd.Type {
 	case CmdArithmetic:
@@ -261,7 +265,7 @@ func (t *Translator) ifGoTo(args *LabelArgs, file *FileTranslator) []string {
 }
 
 func (t *Translator) function(args *FunctionArgs, file *FileTranslator) []string {
-	file.functionName = args.Name
+	file.enterFunction(args.Name)
 
 	asm := []string{"(" + args.Name + ")"} // (f)
 	for i := uint64(0); i < args.Num; i++ {
@@ -327,8 +331,8 @@ func (t *Translator) uniqueLabel(namespace string) string {
 }
 
 type FileTranslator struct {
-	fileName     string
-	functionName string
+	fileName    string
+	curFuncName string
 
 	translator *Translator
 }
@@ -344,8 +348,14 @@ func (t *FileTranslator) scopedLabel(args *LabelArgs) string {
 	if t == nil {
 		return "$" + args.Label
 	}
+	return t.curFuncName + "$" + args.Label
+}
 
-	return t.functionName + "$" + args.Label
+func (t *FileTranslator) enterFunction(name string) {
+	if t == nil {
+		return
+	}
+	t.curFuncName = name
 }
 
 func concat(ss ...[]string) []string {

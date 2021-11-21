@@ -14,16 +14,15 @@ import (
 )
 
 type opts struct {
-	Inputs    []string `short:"i" long:"in" required:"true" description:"input file or directory path"`
-	Output    string   `short:"o" long:"out" required:"true" description:"output file or path"`
-	Bootstrap bool     `short:"b" long:"bootstrap"  description:"enable bootstrap"`
-	Debug     bool     `short:"d" long:"debug"  description:"enable debug mode"`
+	Inputs      []string `short:"i" long:"in" required:"true" description:"input file or directory path"`
+	Output      string   `short:"o" long:"out" required:"true" description:"output file or path"`
+	Debug       bool     `short:"d" long:"debug"  description:"enable debug mode"`
+	NoBootstrap bool     `long:"no-bootstrap"  description:"disable bootstrap code"`
 }
 
 func main() {
 	var opts opts
 	if _, err := flags.Parse(&opts); err != nil {
-		fmt.Println(err)
 		return
 	}
 
@@ -47,7 +46,10 @@ func main() {
 		}
 	}()
 
-	trans, err := vm.NewTranslator(out, opts.Bootstrap)
+	trans, err := vm.NewTranslator(vm.TranslatorOptions{
+		Out:         out,
+		NoBootstrap: opts.NoBootstrap,
+	})
 	if err != nil {
 		fmt.Println(err)
 		return
