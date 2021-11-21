@@ -14,10 +14,12 @@ type Translator struct {
 	Debug      bool
 }
 
-func NewTranslator(out io.Writer) (*Translator, error) {
+func NewTranslator(out io.Writer, bootstrap bool) (*Translator, error) {
 	t := &Translator{out: out}
-	if err := t.writeAsm(t.bootstrap()...); err != nil {
-		return nil, err
+	if bootstrap {
+		if err := t.writeAsm(t.bootstrap()...); err != nil {
+			return nil, err
+		}
 	}
 	return t, nil
 }
@@ -62,16 +64,16 @@ func (t *Translator) command(cmd Command, file *FileTranslator) error {
 	return t.writeAsm(asm...)
 }
 
+func (t *Translator) writeAsm(ops ...string) error {
+	_, err := io.Copy(t.out, bytes.NewBufferString(strings.Join(ops, "\n")+"\n"))
+	return err
+}
+
 func (t *Translator) bootstrap() []string {
 	return concat(
 		[]string{"@256", "D=A", "@SP", "M=D"},        // SP=256
 		t.call(&FunctionArgs{Name: "Sys.init"}, nil), // call Sys.init
 	)
-}
-
-func (t *Translator) writeAsm(ops ...string) error {
-	_, err := io.Copy(t.out, bytes.NewBufferString(strings.Join(ops, "\n")+"\n"))
-	return err
 }
 
 func (t *Translator) arithmetic(args *ArithmeticArgs, file *FileTranslator) []string {
@@ -148,7 +150,12 @@ func (t *Translator) push(args *MemoryArgs, file *FileTranslator) []string {
 	var cmds []string
 	switch seg {
 	case SegArgument, SegLocal, SegThis, SegThat:
-		cmds = []string{t.reservedSegPos(seg), "D=M", "@" + t.pushLabel(args), "A=D+A", "D=M"}
+		label := t.pushLabel(args)
+		if label != "SP" {
+			cmds = []string{t.reservedSegPos(seg), "D=M", "@" + label, "A=D+A", "D=M"}
+		} else {
+			cmds = []string{t.reservedSegPos(seg), "D=M"}
+		}
 	case SegPointer:
 		cmds = []string{t.pointerSegPos(index), "D=M"}
 	case SegTemp:
@@ -180,13 +187,10 @@ func (t *Translator) pop(args *MemoryArgs, file *FileTranslator) []string {
 	var pos string
 	switch seg {
 	case SegArgument, SegLocal, SegThis, SegThat:
-		pos = t.reservedSegPos(seg)
-		if index != 0 {
-			return []string{
-				pos, "D=M", "@" + toStr(index), "D=D+A", "@R13", "M=D", // r13=pos+i
-				"@SP", "M=M-1", "A=M", "D=M", // sp--
-				"@R13", "A=M", "M=D", // *r13=*sp
-			}
+		return []string{
+			t.reservedSegPos(seg), "D=M", "@" + toStr(index), "D=D+A", "@R13", "M=D", // r13=pos+i
+			"@SP", "M=M-1", "A=M", "D=M", // sp--
+			"@R13", "A=M", "M=D", // *r13=*sp
 		}
 	case SegPointer:
 		pos = t.pointerSegPos(index)
@@ -276,9 +280,7 @@ func (t *Translator) ret(file *FileTranslator) []string {
 		[]string{
 			"@LCL", "D=M", framePos, "M=D", // FRAME = LCL
 			"@5", "A=D-A", "D=M", retPos, "M=D", // RET = *(FRAME-5)
-		},
-		t.pop(&MemoryArgs{Segment: SegArgument, Index: 0}, file), // *ARG = pop()
-		[]string{
+			"@SP", "M=M-1", "A=M", "D=M", t.reservedSegPos(SegArgument), "A=M", "M=D", // *ARG = pop()
 			"@ARG", "D=M+1", "@SP", "M=D", // SP = ARG+1
 		},
 		t.popFrame(framePos, SegThat),     // THAT = *(FRAME-1)
@@ -303,19 +305,19 @@ func (t *Translator) popFrame(framePos string, seg MemorySegment) []string {
 }
 
 func (t *Translator) call(args *FunctionArgs, file *FileTranslator) []string {
-	label := t.uniqueLabel("RET")
+	retAddr := t.uniqueLabel("RET")
 
 	return concat(
-		t.push(&MemoryArgs{Segment: SegConstant, Label: label}, file), // push return-address
-		t.push(&MemoryArgs{Segment: SegLocal, Label: "SP"}, file),     // push LCL
-		t.push(&MemoryArgs{Segment: SegArgument, Label: "SP"}, file),  // push ARG
-		t.push(&MemoryArgs{Segment: SegThis, Label: "SP"}, file),      // push THIS
-		t.push(&MemoryArgs{Segment: SegThat, Label: "SP"}, file),      // push THAT
+		t.push(&MemoryArgs{Segment: SegConstant, Label: retAddr}, file), // push return-address
+		t.push(&MemoryArgs{Segment: SegLocal, Label: "SP"}, file),       // push LCL
+		t.push(&MemoryArgs{Segment: SegArgument, Label: "SP"}, file),    // push ARG
+		t.push(&MemoryArgs{Segment: SegThis, Label: "SP"}, file),        // push THIS
+		t.push(&MemoryArgs{Segment: SegThat, Label: "SP"}, file),        // push THAT
 		[]string{
 			"@SP", "D=M", "@" + toStr(5+args.Num), "D=D-A", t.reservedSegPos(SegArgument), "M=D", // ARG = SP-n-5
 			"@SP", "D=M", "@LCL", "M=D", // LCL = SP
 			"@" + args.Name, "0;JMP", // goto f
-			"(" + label + ")", // (return-address)
+			"(" + retAddr + ")", // (return-address)
 		},
 	)
 }

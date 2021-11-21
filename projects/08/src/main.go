@@ -14,9 +14,10 @@ import (
 )
 
 type opts struct {
-	Inputs []string `short:"i" long:"in" required:"true" description:"input file or directory path"`
-	Output string   `short:"o" long:"out" required:"true" description:"output file or path"`
-	Debug  bool     `short:"d" long:"debug"  description:"enable debug mode"`
+	Inputs    []string `short:"i" long:"in" required:"true" description:"input file or directory path"`
+	Output    string   `short:"o" long:"out" required:"true" description:"output file or path"`
+	Bootstrap bool     `short:"b" long:"bootstrap"  description:"enable bootstrap"`
+	Debug     bool     `short:"d" long:"debug"  description:"enable debug mode"`
 }
 
 func main() {
@@ -46,7 +47,7 @@ func main() {
 		}
 	}()
 
-	trans, err := vm.NewTranslator(out)
+	trans, err := vm.NewTranslator(out, opts.Bootstrap)
 	if err != nil {
 		fmt.Println(err)
 		return

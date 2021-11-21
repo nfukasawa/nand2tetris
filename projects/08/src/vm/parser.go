@@ -49,19 +49,21 @@ func (p *Parser) nextLine() (args []string, line int, err error) {
 			return nil, p.line, err
 		}
 
-		cmd := strings.Trim(p.scanner.Text(), " ")
-		if cmd == "" || strings.HasPrefix(cmd, "//") {
-			continue
+		line := p.scanner.Text()
+		comment := strings.Index(line, "//")
+		if comment != -1 {
+			line = line[0:comment]
 		}
 
+		cmd := strings.TrimSpace(line)
+		if cmd == "" {
+			continue
+		}
 		for _, arg := range strings.Split(cmd, " ") {
 			if arg == "" {
 				continue
 			}
-			if strings.HasPrefix(arg, "//") {
-				break
-			}
-			args = append(args, arg)
+			args = append(args, strings.TrimSpace(arg))
 		}
 		break
 	}
