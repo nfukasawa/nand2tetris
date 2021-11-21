@@ -34,7 +34,7 @@ func main() {
 		return
 	}
 
-	out, err := os.OpenFile(opts.Output, os.O_WRONLY|os.O_CREATE, 0644)
+	out, err := os.OpenFile(opts.Output, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		fmt.Println(err)
 		return

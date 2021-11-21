@@ -132,7 +132,7 @@ func (t *FileTranslator) push(seg MemorySegment, index uint64) error {
 	default:
 		return fmt.Errorf("unknown push memory segment: %v", seg)
 	}
-	return t.writeAsm(append(cmds, "@SP", "A=M", "M=D", "@SP", "M=M+1")...) // *sp=*pos; sp++;
+	return t.writeAsm(append(cmds, "@SP", "M=M+1", "A=M-1", "M=D")...) // *sp=*pos; sp++;
 }
 
 func (t *FileTranslator) pop(seg MemorySegment, index uint64) error {

@@ -22,18 +22,19 @@ func (t *Translator) File(fileName string) FileTranslator {
 	defer func() { t.fileNum++ }()
 
 	return FileTranslator{
-		fileName: fileName,
-		opIndex:  0,
-		out:      t.out,
-		debug:    t.Debug,
+		fileName:   fileName,
+		labelIndex: 0,
+		out:        t.out,
+		debug:      t.Debug,
 	}
 }
 
 type FileTranslator struct {
-	fileName string
-	opIndex  int
-	out      io.Writer
-	debug    bool
+	fileName     string
+	functionName string
+	labelIndex   int
+	out          io.Writer
+	debug        bool
 }
 
 func (t *FileTranslator) Command(cmd Command) error {
@@ -48,23 +49,17 @@ func (t *FileTranslator) Command(cmd Command) error {
 	case CmdPop:
 		return t.pop(cmd.Memory)
 	case CmdLabel:
-		// TODO
-		return nil
+		return t.label(cmd.Label)
 	case CmdGoto:
-		// TODO
-		return nil
+		return t.goTo(cmd.Label)
 	case CmdIfGoto:
-		// TODO
-		return nil
+		return t.ifGoTo(cmd.Label)
 	case CmdFunction:
-		// TODO
-		return nil
+		return t.function(cmd.Function)
 	case CmdReturn:
-		// TODO
-		return nil
+		return t.ret()
 	case CmdCall:
-		// TODO
-		return nil
+		return t.call(cmd.Function)
 	default:
 		return fmt.Errorf("unimplemented command type: %v", cmd.Type)
 	}
@@ -112,8 +107,7 @@ func (t *FileTranslator) arith2Args(op ArithmeticOperation) error {
 }
 
 func (t *FileTranslator) arithCmp(op ArithmeticOperation) error {
-	label := fmt.Sprintf("CMP.%s.%d", t.fileName, t.opIndex)
-	t.opIndex++
+	label := t.uniqueLabel("CMP")
 
 	var cmd string
 	switch op {
@@ -128,7 +122,7 @@ func (t *FileTranslator) arithCmp(op ArithmeticOperation) error {
 		"@SP", "M=M-1", "A=M", "D=M", "A=A-1", // y=--sp; x=y-1
 		"D=M-D",        // d=*x-*y
 		"M=-1",         // *y=true
-		"@"+label, cmd, // if cmd(d) goto label
+		"@"+label, cmd, // if cmd(d) goto @label
 		"@SP", "A=M-1", "M=0", // *y=false
 		"("+label+")", // label
 	)
@@ -153,7 +147,7 @@ func (t *FileTranslator) push(args *MemoryArgs) error {
 	default:
 		return fmt.Errorf("unknown push memory segment: %v", seg)
 	}
-	return t.writeAsm(append(cmds, "@SP", "A=M", "M=D", "@SP", "M=M+1")...) // *sp=*pos; sp++;
+	return t.writeAsm(append(cmds, "@SP", "M=M+1", "A=M-1", "M=D")...) // *sp=*pos; sp++;
 }
 
 func (t *FileTranslator) pop(args *MemoryArgs) error {
@@ -164,8 +158,8 @@ func (t *FileTranslator) pop(args *MemoryArgs) error {
 	case SegArgument, SegLocal, SegThis, SegThat:
 		return t.writeAsm(
 			t.reservedSegPos(seg), "D=M", "@"+toStr(index), "D=D+A", "@R13", "M=D", // r13=pos+i
-			"@SP", "M=M-1", "A=M", "D=M", // sp--; d=*sp
-			"@R13", "A=M", "M=D", // *r13=d
+			"@SP", "M=M-1", "A=M", "D=M", // sp--
+			"@R13", "A=M", "M=D", // *r13=*sp
 		)
 	}
 
@@ -217,9 +211,88 @@ func (t *FileTranslator) staticSegPos(index uint64) string {
 	return "@" + t.fileName + "." + toStr(index)
 }
 
+func (t *FileTranslator) label(args *LabelArgs) error {
+	return t.writeAsm("(" + t.scopedLabel(args) + ")") // (label)
+}
+
+func (t *FileTranslator) goTo(args *LabelArgs) error {
+	return t.writeAsm("@"+t.scopedLabel(args), "0;JMP") // goto @label
+}
+
+func (t *FileTranslator) ifGoTo(args *LabelArgs) error {
+	return t.writeAsm(
+		"@SP", "M=M-1", "A=M", "D=M", // sp--
+		"@"+t.scopedLabel(args), "D;JNE", // if(*sp != 0) goto @label
+	)
+}
+
+func (t *FileTranslator) function(args *FunctionArgs) error {
+	t.functionName = args.Name
+
+	asm := []string{"(" + args.Name + ")"}  // (f)
+	for i := uint64(0); i < args.Num; i++ { // repeat num times
+		asm = append(asm, "@SP", "M=M+1", "A=M-1", "M=0") // sp++; sp=0
+	}
+	return t.writeAsm(asm...)
+}
+
+func (t *FileTranslator) ret() error {
+	t.functionName = ""
+
+	// FRAME = LCL
+	// RET = *(FRAME-5)
+	// *ARG = pop()
+	// SP = ARG+1
+	// THAT = *(FRAME-1)
+	// THIS = *(FRAME-2)
+	// ARG = *(FRAME-3)
+	// LCL = *(FRAME-4)
+	// goto RET
+	return nil
+}
+
+func (t *FileTranslator) call(args *FunctionArgs) error {
+	// label := t.uniqueLabel("RET")
+
+	// push return-address
+	// push LCL
+	// push ARG
+	// push THIS
+	// push THAT
+	// ARG = SP-n-5
+	// LCL = SP
+	// goto f
+	// (return-address)
+	return nil
+}
+
+func (t *FileTranslator) uniqueLabel(namespace string) string {
+	label := fmt.Sprintf("%s.%s.%d", namespace, t.fileName, t.labelIndex)
+	t.labelIndex++
+	return label
+}
+
+func (t *FileTranslator) scopedLabel(args *LabelArgs) string {
+	return t.functionName + "$" + args.Label
+}
+
 func (t *FileTranslator) writeAsm(ops ...string) error {
 	_, err := io.Copy(t.out, bytes.NewBufferString(strings.Join(ops, "\n")+"\n"))
 	return err
+}
+
+func concat(elms []interface{}) []string {
+	var strs []string
+	for _, elm := range elms {
+		switch elm := elm.(type) {
+		case string:
+			strs = append(strs, elm)
+		case []string:
+			strs = append(strs, elm...)
+		default:
+		}
+	}
+	return strs
 }
 
 func toStr(i uint64) string {
