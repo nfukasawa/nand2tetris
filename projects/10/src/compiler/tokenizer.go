@@ -6,20 +6,13 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
 type Token struct {
-	Type TokenType
-
-	Keyword      string
-	Symbol       rune
-	IntegerConst int64
-	StringConst  string
-	Identifier   string
-
-	Line int
+	Type  TokenType
+	Value string
+	Line  int
 }
 
 type Tokens []Token
@@ -117,7 +110,7 @@ func (t *tokenizer) tokenize(code string, line int) ([]Token, error) {
 			code = code[1:]
 
 		case runeInclude(symbols, ch): // symbol
-			tokens = append(tokens, Token{Type: TokenTypeSymbol, Symbol: ch, Line: line})
+			tokens = append(tokens, Token{Type: TokenTypeSymbol, Value: string(ch), Line: line})
 			code = code[1:]
 
 		case ch == '"': // string
@@ -125,24 +118,20 @@ func (t *tokenizer) tokenize(code string, line int) ([]Token, error) {
 			if s == "" {
 				return nil, fmt.Errorf("string not closed: line %d", line)
 			}
-			tokens = append(tokens, Token{Type: TokenTypeStringConst, StringConst: strings.Trim(s, `"`), Line: line})
+			tokens = append(tokens, Token{Type: TokenTypeStringConst, Value: strings.Trim(s, `"`), Line: line})
 			code = code[len(s):]
 
 		case '0' <= ch && ch <= '9': // int
 			s := tokenIntRegexp.FindString(code)
-			i, err := strconv.ParseInt(s, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("integer parse error: line %d, %v", line, err)
-			}
-			tokens = append(tokens, Token{Type: TokenTypeIntegerConst, IntegerConst: i, Line: line})
+			tokens = append(tokens, Token{Type: TokenTypeIntegerConst, Value: s, Line: line})
 			code = code[len(s):]
 
 		default: // keyword or identifier
 			i := tokenIdentRegexp.FindString(code)
 			if stringInclude(keywords, i) {
-				tokens = append(tokens, Token{Type: TokenTypeKeyword, Keyword: i, Line: line})
+				tokens = append(tokens, Token{Type: TokenTypeKeyword, Value: i, Line: line})
 			} else {
-				tokens = append(tokens, Token{Type: TokenTypeIdentifier, Identifier: i, Line: line})
+				tokens = append(tokens, Token{Type: TokenTypeIdentifier, Value: i, Line: line})
 			}
 
 			code = code[len(i):]
@@ -217,42 +206,11 @@ func (t *tokenizer) trimComment(str string) string {
 	return strings.TrimSpace(str)
 }
 
-func stringInclude(strs []string, str string) bool {
-	for _, s := range strs {
-		if s == str {
-			return true
-		}
-	}
-	return false
-}
-
-func runeInclude(runes []rune, r rune) bool {
-	for _, s := range runes {
-		if s == r {
-			return true
-		}
-	}
-	return false
-}
-
 func (ts Tokens) ToXML() io.Reader {
 	buf := bytes.NewBuffer(nil)
 	buf.WriteString("<tokens>\n")
 	for _, t := range ts {
-		buf.WriteString("<" + string(t.Type) + "> ")
-		switch t.Type {
-		case TokenTypeKeyword:
-			buf.WriteString(t.Keyword)
-		case TokenTypeSymbol:
-			buf.WriteString(escapeSymbolXML(t.Symbol))
-		case TokenTypeIntegerConst:
-			buf.WriteString(strconv.FormatInt(t.IntegerConst, 10))
-		case TokenTypeStringConst:
-			buf.WriteString(t.StringConst)
-		case TokenTypeIdentifier:
-			buf.WriteString(t.Identifier)
-		}
-		buf.WriteString(" </" + string(t.Type) + ">\n")
+		buf.WriteString("<" + string(t.Type) + "> " + t.Value + " </" + string(t.Type) + ">\n")
 	}
 	buf.WriteString("</tokens>\n")
 	return buf

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -41,12 +42,14 @@ func main() {
 
 		srcBase := strings.TrimSuffix(filepath.Base(src), ".jack")
 
+		// tokenize
 		tokens, err := compiler.Tokenize(file)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
+		// write tokens
 		if err := writeFile(
 			filepath.Join(opts.Output, filepath.Base(srcBase)+"T.xml"),
 			tokens.ToXML(),
@@ -54,7 +57,22 @@ func main() {
 			fmt.Println(err)
 			return
 		}
+
+		// analyze
+		cls, err := compiler.Analyze(tokens)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		// TODO: debug
+		pp(cls)
 	}
+}
+
+func pp(x interface{}) {
+	b, _ := json.MarshalIndent(x, "", "  ")
+	fmt.Println(string(b))
 }
 
 func collectSourceFiles(inputs []string) ([]string, error) {
