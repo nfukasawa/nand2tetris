@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"regexp"
@@ -206,29 +205,21 @@ func (t *tokenizer) trimComment(str string) string {
 	return strings.TrimSpace(str)
 }
 
-func (ts Tokens) ToXML() io.Reader {
-	buf := bytes.NewBuffer(nil)
-	buf.WriteString("<tokens>\n")
-	for _, t := range ts {
-		buf.WriteString("<" + string(t.Type) + "> " + t.Value + " </" + string(t.Type) + ">\n")
+func (ts Tokens) ToXML() *XMLElm {
+	if ts == nil {
+		return nil
 	}
-	buf.WriteString("</tokens>\n")
-	return buf
+
+	elm := XMLElm{Name: "tokens"}
+	for _, t := range ts {
+		elm.AddChild(t.ToXML())
+	}
+	return &elm
 }
 
-func escapeSymbolXML(sym rune) string {
-	switch sym {
-	case '<':
-		return "&lt;"
-	case '>':
-		return "&gt;"
-	case '&':
-		return "&amp;"
-	case '\'':
-		return "&apos;"
-	case '"':
-		return "&quot;"
-	default:
-		return string(sym)
+func (t *Token) ToXML() *XMLElm {
+	if t == nil {
+		return nil
 	}
+	return &XMLElm{Name: string(t.Type), Value: t.Value}
 }

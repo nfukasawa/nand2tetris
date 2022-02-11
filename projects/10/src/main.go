@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -50,10 +50,7 @@ func main() {
 		}
 
 		// write tokens
-		if err := writeFile(
-			filepath.Join(opts.Output, filepath.Base(srcBase)+"T.xml"),
-			tokens.ToXML(),
-		); err != nil {
+		if err := writeXML(filepath.Join(opts.Output, filepath.Base(srcBase)+"T.xml"), tokens.ToXML()); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -65,14 +62,13 @@ func main() {
 			return
 		}
 
-		// TODO: debug
-		pp(cls)
-	}
-}
+		// write tree
+		if err := writeXML(filepath.Join(opts.Output, filepath.Base(srcBase)+".xml"), cls.ToXML()); err != nil {
+			fmt.Println(err)
+			return
+		}
 
-func pp(x interface{}) {
-	b, _ := json.MarshalIndent(x, "", "  ")
-	fmt.Println(string(b))
+	}
 }
 
 func collectSourceFiles(inputs []string) ([]string, error) {
@@ -98,6 +94,17 @@ func collectSourceFiles(inputs []string) ([]string, error) {
 		return nil, fmt.Errorf(".jack file not found in: %v", inputs)
 	}
 	return srcs, nil
+}
+
+func writeXML(path string, xml *compiler.XMLElm) error {
+	buf := bytes.NewBuffer(nil)
+	if err := xml.Marshal(buf); err != nil {
+		return err
+	}
+	if err := writeFile(path, buf); err != nil {
+		return err
+	}
+	return nil
 }
 
 func writeFile(path string, buf io.Reader) error {

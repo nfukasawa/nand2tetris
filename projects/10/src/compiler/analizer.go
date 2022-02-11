@@ -9,6 +9,8 @@ type Class struct {
 	ClassName      string
 	ClassVarDecs   []ClassVarDec
 	SubRoutineDecs []SubroutineDec
+
+	XML XMLElm
 }
 
 type Type string
@@ -25,6 +27,8 @@ type ClassVarDec struct {
 	ClassVarDecType ClassVarDecType
 	VarType         Type
 	VarNames        []string
+
+	XML XMLElm
 }
 
 type ClassVarDecType string
@@ -38,8 +42,10 @@ type SubroutineDec struct {
 	SubRoutineType SubRoutineType
 	RetType        Type
 	SubroutineName string
-	ParameterList  []Parameter
+	ParameterList  ParameterList
 	SubroutineBody SubroutineBody
+
+	XML XMLElm
 }
 
 type SubRoutineType string
@@ -50,19 +56,37 @@ const (
 	SubRoutineTypeMethod      SubRoutineType = "method"
 )
 
+type ParameterList struct {
+	Paramters []Parameter
+
+	XML XMLElm
+}
+
 type Parameter struct {
 	VarType Type
 	VarName string
+
+	XML XMLElm
 }
 
 type SubroutineBody struct {
 	VarDecs    []VarDec
-	Statements []Statement
+	Statements Statements
+
+	XML XMLElm
 }
 
 type VarDec struct {
 	VarType  Type
 	VarNames []string
+
+	XML XMLElm
+}
+
+type Statements struct {
+	Statements []Statement
+
+	XML XMLElm
 }
 
 type Statement struct {
@@ -88,31 +112,44 @@ type LetStatement struct {
 	VarName  string
 	Index    *Expression
 	VarValue Expression
+
+	XML XMLElm
 }
 
 type IfStatement struct {
 	Condition      Expression
-	IfStatements   []Statement
-	ElseStatements []Statement
+	IfStatements   Statements
+	ElseStatements Statements
+
+	XML XMLElm
 }
 
 type WhileStatement struct {
 	Condition  Expression
-	Statements []Statement
+	Statements Statements
+
+	XML XMLElm
 }
 
 type DoStatement struct {
 	SubroutineCall SubroutineCall
+
+	XML XMLElm
 }
 
 type ReturnStatement struct {
 	Expression *Expression
+
+	XML XMLElm
 }
 
 type Expression struct {
 	Term Term
 	Tail []ExpressionTail
+
+	XML XMLElm
 }
+
 type ExpressionTail struct {
 	Op   Op
 	Term Term
@@ -129,6 +166,8 @@ type Term struct {
 	Expression      *Expression
 	UnaryOp         *UnaryOp
 	UnaryOpTerm     *Term
+
+	XML XMLElm
 }
 
 type TermType string
@@ -147,7 +186,15 @@ const (
 type SubroutineCall struct {
 	ClassOrVarName *string
 	SubroutineName string
-	ExpressionList []Expression
+	ExpressionList ExpressionList
+
+	XML XMLElm
+}
+
+type ExpressionList struct {
+	Expressions []Expression
+
+	XML XMLElm
 }
 
 type Op string
@@ -179,21 +226,26 @@ func newAnalyzer(tokens Tokens) analyzer {
 }
 
 func (a *analyzer) parseClass() (*Class, error) {
+	cls := Class{XML: XMLElm{Name: "class"}}
+
 	token := a.popToken()
 	if err := assertToken(token, TokenTypeKeyword, "class"); err != nil {
 		return nil, err
 	}
+	cls.XML.AddChild(token)
 
 	token = a.popToken()
 	if err := assertToken(token, TokenTypeIdentifier); err != nil {
 		return nil, err
 	}
-	className := token.Value
+	cls.ClassName = token.Value
+	cls.XML.AddChild(token)
 
 	token = a.popToken()
 	if err := assertToken(token, TokenTypeSymbol, "{"); err != nil {
 		return nil, err
 	}
+	cls.XML.AddChild(token)
 
 	var vDecs []ClassVarDec
 	for {
@@ -205,7 +257,9 @@ func (a *analyzer) parseClass() (*Class, error) {
 			break
 		}
 		vDecs = append(vDecs, *dec)
+		cls.XML.AddChild(dec)
 	}
+	cls.ClassVarDecs = vDecs
 
 	var srDecs []SubroutineDec
 	for {
@@ -217,51 +271,50 @@ func (a *analyzer) parseClass() (*Class, error) {
 			break
 		}
 		srDecs = append(srDecs, *dec)
+		cls.XML.AddChild(dec)
 	}
+	cls.SubRoutineDecs = srDecs
 
 	token = a.popToken()
 	if err := assertToken(token, TokenTypeSymbol, "}"); err != nil {
 		return nil, err
 	}
+	cls.XML.AddChild(token)
 
-	return &Class{
-		ClassName:      className,
-		ClassVarDecs:   vDecs,
-		SubRoutineDecs: srDecs,
-	}, nil
+	return &cls, nil
 }
 
-func (a *analyzer) parseType() (Type, error) {
+func (a *analyzer) parseType() (Type, *Token, error) {
 	token := a.popToken()
 	switch token.Type {
 	case TokenTypeKeyword:
 		switch token.Value {
 		case "int", "char", "boolean":
-			return Type(token.Value), nil
+			return Type(token.Value), token, nil
 		default:
-			return "", fmt.Errorf("int, char, boolean or className is expected, but got %+v", token)
+			return "", nil, fmt.Errorf("int, char, boolean or className is expected, but got %+v", token)
 		}
 	case TokenTypeIdentifier:
-		return Type(token.Value), nil
+		return Type(token.Value), token, nil
 	default:
-		return "", fmt.Errorf("int, char, boolean or className is expected, but got %+v", token)
+		return "", nil, fmt.Errorf("int, char, boolean or className is expected, but got %+v", token)
 	}
 }
 
-func (a *analyzer) parseRetType() (Type, error) {
+func (a *analyzer) parseRetType() (Type, *Token, error) {
 	token := a.popToken()
 	switch token.Type {
 	case TokenTypeKeyword:
 		switch token.Value {
 		case "int", "char", "boolean", "void":
-			return Type(token.Value), nil
+			return Type(token.Value), token, nil
 		default:
-			return "", fmt.Errorf("int, char, boolean, void or className is expected, but got %+v", token)
+			return "", nil, fmt.Errorf("int, char, boolean, void or className is expected, but got %+v", token)
 		}
 	case TokenTypeIdentifier:
-		return Type(token.Value), nil
+		return Type(token.Value), token, nil
 	default:
-		return "", fmt.Errorf("int, char, boolean, void or className is expected, but got %+v", token)
+		return "", nil, fmt.Errorf("int, char, boolean, void or className is expected, but got %+v", token)
 	}
 }
 
@@ -269,14 +322,18 @@ func (a *analyzer) parseClassVarDec() (*ClassVarDec, error) {
 	if !checkToken(a.topToken(), TokenTypeKeyword, "static", "field") {
 		return nil, nil
 	}
+	dec := ClassVarDec{XML: XMLElm{Name: "classVarDec"}}
 
 	token := a.popToken()
-	clsVarTy := ClassVarDecType(token.Value)
+	dec.ClassVarDecType = ClassVarDecType(token.Value)
+	dec.XML.AddChild(token)
 
-	varTy, err := a.parseType()
+	var err error
+	dec.VarType, token, err = a.parseType()
 	if err != nil {
 		return nil, err
 	}
+	dec.XML.AddChild(token)
 
 	var varNames []string
 	for {
@@ -285,21 +342,20 @@ func (a *analyzer) parseClassVarDec() (*ClassVarDec, error) {
 			return nil, err
 		}
 		varNames = append(varNames, token.Value)
+		dec.XML.AddChild(token)
 
 		token = a.popToken()
 		if err := assertToken(token, TokenTypeSymbol, ",", ";"); err != nil {
 			return nil, err
 		}
+		dec.XML.AddChild(token)
 		if token.Value == ";" {
 			break
 		}
 	}
+	dec.VarNames = varNames
 
-	return &ClassVarDec{
-		ClassVarDecType: clsVarTy,
-		VarType:         varTy,
-		VarNames:        varNames,
-	}, nil
+	return &dec, nil
 }
 
 func (a *analyzer) parseSubroutineDec() (*SubroutineDec, error) {
@@ -307,84 +363,94 @@ func (a *analyzer) parseSubroutineDec() (*SubroutineDec, error) {
 		return nil, nil
 	}
 
+	dec := SubroutineDec{XML: XMLElm{Name: "subroutineDec"}}
 	token := a.popToken()
-	srTy := SubRoutineType(token.Value)
+	dec.SubRoutineType = SubRoutineType(token.Value)
+	dec.XML.AddChild(token)
 
-	retTy, err := a.parseRetType()
+	var err error
+	dec.RetType, token, err = a.parseRetType()
 	if err != nil {
 		return nil, err
 	}
+	dec.XML.AddChild(token)
 
 	token = a.popToken()
 	if err := assertToken(token, TokenTypeIdentifier); err != nil {
 		return nil, err
 	}
-	srName := token.Value
+	dec.SubroutineName = token.Value
+	dec.XML.AddChild(token)
 
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "("); err != nil {
+		return nil, err
+	}
+	dec.XML.AddChild(token)
 	params, err := a.parseParamterList()
 	if err != nil {
 		return nil, err
 	}
+	dec.XML.AddChild(params)
+	dec.XML.AddChild(a.popToken()) // ")"
 
 	body, err := a.parseSubroutineBody()
 	if err != nil {
 		return nil, err
 	}
+	dec.SubroutineBody = *body
+	dec.XML.AddChild(body)
 
-	return &SubroutineDec{
-		SubRoutineType: srTy,
-		RetType:        retTy,
-		SubroutineName: srName,
-		ParameterList:  params,
-		SubroutineBody: *body,
-	}, nil
+	return &dec, nil
 }
 
-func (a *analyzer) parseParamterList() ([]Parameter, error) {
-	token := a.popToken()
-	if err := assertToken(token, TokenTypeSymbol, "("); err != nil {
-		return nil, err
-	}
+func (a *analyzer) parseParamterList() (*ParameterList, error) {
 
-	token = a.topToken()
+	params := &ParameterList{XML: XMLElm{Name: "parameterList", Children: []XMLElm{}}}
+
+	token := a.topToken()
 	if token.Type == TokenTypeSymbol && token.Value == ")" {
-		a.popToken()
-		return nil, nil
+		return params, nil
 	}
 
-	var params []Parameter
 	for {
-		ty, err := a.parseType()
+		ty, token, err := a.parseType()
 		if err != nil {
 			return nil, err
 		}
+		params.XML.AddChild(token)
 
 		token = a.popToken()
 		if err := assertToken(token, TokenTypeIdentifier); err != nil {
 			return nil, err
 		}
+		params.XML.AddChild(token)
 
-		params = append(params, Parameter{VarType: ty, VarName: token.Value})
+		params.Paramters = append(params.Paramters, Parameter{VarType: ty, VarName: token.Value})
 
-		token = a.popToken()
+		token = a.topToken()
 		if err := assertToken(token, TokenTypeSymbol, ",", ")"); err != nil {
 			return nil, err
 		}
-		if token.Value == ")" {
-			break
+		if token.Value == "," {
+			params.XML.AddChild(a.popToken())
+			continue
 		}
+		break
 	}
 	return params, nil
 }
 
 func (a *analyzer) parseSubroutineBody() (*SubroutineBody, error) {
 
+	body := SubroutineBody{XML: XMLElm{Name: "subroutineBody"}}
+
 	token := a.popToken()
 	if err := assertToken(token, TokenTypeSymbol, "{"); err != nil {
 		return nil, err
 	}
+	body.XML.AddChild(token)
 
-	var decs []VarDec
 	for {
 		dec, err := a.parseVarDec()
 		if err != nil {
@@ -393,61 +459,67 @@ func (a *analyzer) parseSubroutineBody() (*SubroutineBody, error) {
 		if dec == nil {
 			break
 		}
-		decs = append(decs, *dec)
+		body.VarDecs = append(body.VarDecs, *dec)
+		body.XML.AddChild(dec)
 	}
 
+	var err error
 	statements, err := a.parseStatements()
 	if err != nil {
 		return nil, err
 	}
+	body.Statements = *statements
+	body.XML.AddChild(statements)
 
 	token = a.popToken()
 	if err := assertToken(token, TokenTypeSymbol, "}"); err != nil {
 		return nil, err
 	}
+	body.XML.AddChild(token)
 
-	return &SubroutineBody{
-		VarDecs:    decs,
-		Statements: statements,
-	}, nil
+	return &body, nil
 }
 
 func (a *analyzer) parseVarDec() (*VarDec, error) {
 	if !checkToken(a.topToken(), TokenTypeKeyword, "var") {
 		return nil, nil
 	}
-	a.popToken()
 
-	varTy, err := a.parseType()
+	dec := VarDec{XML: XMLElm{Name: "varDec"}}
+	dec.XML.AddChild(a.popToken())
+
+	varTy, token, err := a.parseType()
 	if err != nil {
 		return nil, err
 	}
+	dec.VarType = varTy
+	dec.XML.AddChild(token)
 
-	var varNames []string
 	for {
 		token := a.popToken()
 		if err := assertToken(token, TokenTypeIdentifier); err != nil {
 			return nil, err
 		}
-		varNames = append(varNames, token.Value)
+		dec.XML.AddChild(token)
+
+		dec.VarNames = append(dec.VarNames, token.Value)
 
 		token = a.popToken()
 		if err := assertToken(token, TokenTypeSymbol, ",", ";"); err != nil {
 			return nil, err
 		}
+		dec.XML.AddChild(token)
+
 		if token.Value == ";" {
 			break
 		}
 	}
 
-	return &VarDec{
-		VarType:  varTy,
-		VarNames: varNames,
-	}, nil
+	return &dec, nil
 }
 
-func (a *analyzer) parseStatements() ([]Statement, error) {
-	var statements []Statement
+func (a *analyzer) parseStatements() (*Statements, error) {
+	statements := Statements{XML: XMLElm{Name: "statements", Children: []XMLElm{}}}
 	for {
 		statement, err := a.parseStatement()
 		if err != nil {
@@ -456,9 +528,10 @@ func (a *analyzer) parseStatements() ([]Statement, error) {
 		if statement == nil {
 			break
 		}
-		statements = append(statements, *statement)
+		statements.Statements = append(statements.Statements, *statement)
+		statements.XML.AddChild(statement)
 	}
-	return statements, nil
+	return &statements, nil
 }
 
 func (a *analyzer) parseStatement() (*Statement, error) {
@@ -523,204 +596,261 @@ func (a *analyzer) parseLetStatement() (*LetStatement, error) {
 	if !checkToken(a.topToken(), TokenTypeKeyword, "let") {
 		return nil, nil
 	}
-	a.popToken()
+	statement := LetStatement{XML: XMLElm{Name: "letStatement"}}
+	statement.XML.AddChild(a.popToken())
 
 	token := a.popToken()
 	if err := assertToken(token, TokenTypeIdentifier); err != nil {
 		return nil, err
 	}
-	varName := token.Value
+	statement.VarName = token.Value
+	statement.XML.AddChild(token)
 
-	var idx *Expression
 	var err error
 	if checkToken(a.topToken(), TokenTypeSymbol, "[") {
-		a.popToken()
+		statement.XML.AddChild(a.popToken())
 
-		idx, err = a.parseExpression()
+		statement.Index, err = a.parseExpression()
 		if err != nil {
 			return nil, err
 		}
+		statement.XML.AddChild(statement.Index)
 
-		if err := assertToken(a.popToken(), TokenTypeSymbol, "]"); err != nil {
+		token := a.popToken()
+		if err := assertToken(token, TokenTypeSymbol, "]"); err != nil {
 			return nil, err
 		}
+		statement.XML.AddChild(token)
 	}
 
-	if err := assertToken(a.popToken(), TokenTypeSymbol, "="); err != nil {
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "="); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
 
 	val, err := a.parseExpression()
 	if err != nil {
 		return nil, err
 	}
+	statement.VarValue = *val
+	statement.XML.AddChild(val)
 
-	if err := assertToken(a.popToken(), TokenTypeSymbol, ";"); err != nil {
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, ";"); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
 
-	return &LetStatement{
-		VarName:  varName,
-		Index:    idx,
-		VarValue: *val,
-	}, nil
+	return &statement, nil
 }
 
 func (a *analyzer) parseIfStatement() (*IfStatement, error) {
 	if !checkToken(a.topToken(), TokenTypeKeyword, "if") {
 		return nil, nil
 	}
-	a.popToken()
+	statement := IfStatement{XML: XMLElm{Name: "ifStatement"}}
+	statement.XML.AddChild(a.popToken())
 
-	if err := assertToken(a.popToken(), TokenTypeSymbol, "("); err != nil {
+	token := a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "("); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
+
 	cond, err := a.parseExpression()
 	if err != nil {
 		return nil, err
 	}
-	if err := assertToken(a.popToken(), TokenTypeSymbol, ")"); err != nil {
-		return nil, err
-	}
+	statement.Condition = *cond
+	statement.XML.AddChild(cond)
 
-	if err := assertToken(a.popToken(), TokenTypeSymbol, "{"); err != nil {
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, ")"); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
+
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "{"); err != nil {
+		return nil, err
+	}
+	statement.XML.AddChild(token)
+
 	statements, err := a.parseStatements()
 	if err != nil {
 		return nil, err
 	}
-	if err := assertToken(a.popToken(), TokenTypeSymbol, "}"); err != nil {
+	statement.IfStatements = *statements
+	statement.XML.AddChild(statements)
+
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "}"); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
 
-	var elseStatements []Statement
+	var elseStatements *Statements
 	if checkToken(a.topToken(), TokenTypeKeyword, "else") {
-		a.popToken()
-		if err := assertToken(a.popToken(), TokenTypeSymbol, "{"); err != nil {
+		statement.XML.AddChild(a.popToken())
+
+		token = a.popToken()
+		if err := assertToken(token, TokenTypeSymbol, "{"); err != nil {
 			return nil, err
 		}
+		statement.XML.AddChild(token)
+
 		elseStatements, err = a.parseStatements()
 		if err != nil {
 			return nil, err
 		}
-		if err := assertToken(a.popToken(), TokenTypeSymbol, "}"); err != nil {
+		statement.ElseStatements = *elseStatements
+		statement.XML.AddChild(elseStatements)
+
+		token := a.popToken()
+		if err := assertToken(token, TokenTypeSymbol, "}"); err != nil {
 			return nil, err
 		}
+		statement.XML.AddChild(token)
 	}
 
-	return &IfStatement{
-		Condition:      *cond,
-		IfStatements:   statements,
-		ElseStatements: elseStatements,
-	}, nil
+	return &statement, nil
 }
 
 func (a *analyzer) parseWhileStatement() (*WhileStatement, error) {
 	if !checkToken(a.topToken(), TokenTypeKeyword, "while") {
 		return nil, nil
 	}
-	a.popToken()
+	statement := WhileStatement{XML: XMLElm{Name: "whileStatement"}}
+	statement.XML.AddChild(a.popToken())
 
-	if err := assertToken(a.popToken(), TokenTypeSymbol, "("); err != nil {
+	token := a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "("); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
+
 	cond, err := a.parseExpression()
 	if err != nil {
 		return nil, err
 	}
-	if err := assertToken(a.popToken(), TokenTypeSymbol, ")"); err != nil {
-		return nil, err
-	}
+	statement.Condition = *cond
+	statement.XML.AddChild(cond)
 
-	if err := assertToken(a.popToken(), TokenTypeSymbol, "{"); err != nil {
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, ")"); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
+
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "{"); err != nil {
+		return nil, err
+	}
+	statement.XML.AddChild(token)
+
 	statements, err := a.parseStatements()
 	if err != nil {
 		return nil, err
 	}
-	if err := assertToken(a.popToken(), TokenTypeSymbol, "}"); err != nil {
+	statement.Statements = *statements
+	statement.XML.AddChild(statements)
+
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "}"); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
 
-	return &WhileStatement{
-		Condition:  *cond,
-		Statements: statements,
-	}, nil
+	return &statement, nil
 }
 
 func (a *analyzer) parseDoStatement() (*DoStatement, error) {
 	if !checkToken(a.topToken(), TokenTypeKeyword, "do") {
 		return nil, nil
 	}
-	a.popToken()
+	statement := DoStatement{XML: XMLElm{Name: "doStatement"}}
+	statement.XML.AddChild(a.popToken())
 
 	call, err := a.parseSubroutineCall()
 	if err != nil {
 		return nil, err
 	}
+	statement.SubroutineCall = *call
+	statement.XML.AddChild(call)
 
-	if err := assertToken(a.popToken(), TokenTypeSymbol, ";"); err != nil {
+	token := a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, ";"); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
 
-	return &DoStatement{
-		SubroutineCall: *call,
-	}, nil
+	return &statement, nil
 }
 
 func (a *analyzer) parseReturnStatement() (*ReturnStatement, error) {
 	if !checkToken(a.topToken(), TokenTypeKeyword, "return") {
 		return nil, nil
 	}
-	a.popToken()
+	statement := ReturnStatement{XML: XMLElm{Name: "returnStatement"}}
+	statement.XML.AddChild(a.popToken())
 
 	if checkToken(a.topToken(), TokenTypeSymbol, ";") {
-		a.popToken()
-		return &ReturnStatement{}, nil
+		statement.XML.AddChild(a.popToken())
+		return &statement, nil
 	}
 
 	exp, err := a.parseExpression()
 	if err != nil {
 		return nil, err
 	}
+	statement.Expression = exp
+	statement.XML.AddChild(exp)
 
-	if err := assertToken(a.popToken(), TokenTypeSymbol, ";"); err != nil {
+	token := a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, ";"); err != nil {
 		return nil, err
 	}
+	statement.XML.AddChild(token)
 
-	return &ReturnStatement{
-		Expression: exp,
-	}, nil
+	return &statement, nil
 }
 
 func (a *analyzer) parseExpression() (*Expression, error) {
+
+	exp := Expression{XML: XMLElm{Name: "expression"}}
+
 	term, err := a.parseTerm()
 	if err != nil {
 		return nil, err
 	}
+	exp.Term = *term
+	exp.XML.AddChild(term)
 
-	var tail []ExpressionTail
 	for {
 		token := a.topToken()
 		if checkToken(token, TokenTypeSymbol, "+", "-", "*", "/", "&", "|", "<", ">", "=") {
 			op := Op(token.Value)
-			a.popToken()
+			exp.XML.AddChild(a.popToken())
+
 			term, err := a.parseTerm()
 			if err != nil {
 				return nil, err
 			}
-			tail = append(tail, ExpressionTail{Op: op, Term: *term})
+			exp.XML.AddChild(term)
+
+			exp.Tail = append(exp.Tail, ExpressionTail{Op: op, Term: *term})
 			continue
 		}
 		break
 	}
 
-	return &Expression{Term: *term, Tail: tail}, nil
+	return &exp, nil
 }
 
 func (a *analyzer) parseTerm() (*Term, error) {
+
+	xml := XMLElm{Name: "term"}
 
 	token := a.popToken()
 	switch {
@@ -729,13 +859,16 @@ func (a *analyzer) parseTerm() (*Term, error) {
 		if err != nil {
 			return nil, fmt.Errorf("integerConstant parse error: %+v", token)
 		}
-		return &Term{Type: TermTypeIntegerConst, IntegerConst: &i}, nil
+		xml.AddChild(token)
+		return &Term{Type: TermTypeIntegerConst, IntegerConst: &i, XML: xml}, nil
 
 	case checkToken(token, TokenTypeStringConst):
-		return &Term{Type: TermTypeStringConst, StringConst: &token.Value}, nil
+		xml.AddChild(token)
+		return &Term{Type: TermTypeStringConst, StringConst: &token.Value, XML: xml}, nil
 
 	case checkToken(token, TokenTypeKeyword, "true", "false", "null", "this"):
-		return &Term{Type: TermTypeKeywordConst, KeywordConstant: &token.Value}, nil
+		xml.AddChild(token)
+		return &Term{Type: TermTypeKeywordConst, KeywordConstant: &token.Value, XML: xml}, nil
 
 	case checkToken(token, TokenTypeIdentifier):
 		next := a.topToken()
@@ -746,39 +879,53 @@ func (a *analyzer) parseTerm() (*Term, error) {
 			if err != nil {
 				return nil, err
 			}
-			return &Term{Type: TermTypeSubroutineCall, SubroutineCall: call}, nil
+			xml.AddChild(call)
+			return &Term{Type: TermTypeSubroutineCall, SubroutineCall: call, XML: xml}, nil
 
 		case checkToken(next, TokenTypeSymbol, "["):
+			xml.AddChild(token)
+			xml.AddChild(a.popToken())
 			exp, err := a.parseExpression()
 			if err != nil {
 				return nil, err
 			}
-			return &Term{Type: TermTypeVarNameIndex, VarName: &token.Value, Index: exp}, nil
+			xml.AddChild(exp)
+			token := a.popToken()
+			if err := assertToken(token, TokenTypeSymbol, "]"); err != nil {
+				return nil, err
+			}
+			xml.AddChild(token)
+			return &Term{Type: TermTypeVarNameIndex, VarName: &token.Value, Index: exp, XML: xml}, nil
 
 		default:
-			return &Term{Type: TermTypeVarName, VarName: &token.Value}, nil
+			xml.AddChild(token)
+			return &Term{Type: TermTypeVarName, VarName: &token.Value, XML: xml}, nil
 		}
 
 	case checkToken(token, TokenTypeSymbol, "("):
+		xml.AddChild(token)
 		exp, err := a.parseExpression()
 		if err != nil {
 			return nil, err
 		}
-		if err := assertToken(a.popToken(), TokenTypeSymbol, ")"); err != nil {
+		xml.AddChild(exp)
+		token := a.popToken()
+		if err := assertToken(token, TokenTypeSymbol, ")"); err != nil {
 			return nil, err
 		}
-		return &Term{Type: TermTypeExpression, Expression: exp}, nil
+		xml.AddChild(token)
+		return &Term{Type: TermTypeExpression, Expression: exp, XML: xml}, nil
 
 	case checkToken(token, TokenTypeSymbol, "-", "~"):
+		xml.AddChild(token)
+
+		op := UnaryOp(token.Value)
 		term, err := a.parseTerm()
 		if err != nil {
 			return nil, err
 		}
-		op := UnaryOp(token.Value)
-		return &Term{
-			Type:        TermTypeUnaryOp,
-			UnaryOp:     &op,
-			UnaryOpTerm: term}, nil
+		xml.AddChild(term)
+		return &Term{Type: TermTypeUnaryOp, UnaryOp: &op, UnaryOpTerm: term, XML: xml}, nil
 	default:
 		return nil, fmt.Errorf("term is expected: %+v", token)
 	}
@@ -790,67 +937,72 @@ func (a *analyzer) parseSubroutineCall() (*SubroutineCall, error) {
 		return nil, err
 	}
 
+	call := SubroutineCall{XML: XMLElm{SkipLayer: true}}
+	call.XML.AddChild(token)
+
 	next := a.topToken()
 	if err := assertToken(next, TokenTypeSymbol, "(", "."); err != nil {
 		return nil, err
 	}
 
-	var classOrVarName *string
-	var subroutineName string
 	switch next.Value {
 	case "(":
-		subroutineName = token.Value
+		call.SubroutineName = token.Value
 	case ".":
-		a.popToken()
-		classOrVarName = &token.Value
+		call.XML.AddChild(a.popToken())
+		call.ClassOrVarName = &token.Value
+
 		token := a.popToken()
 		if err := assertToken(token, TokenTypeIdentifier); err != nil {
 			return nil, err
 		}
+		call.XML.AddChild(token)
 	}
+
+	token = a.popToken()
+	if err := assertToken(token, TokenTypeSymbol, "("); err != nil {
+		return nil, err
+	}
+	call.XML.AddChild(token)
 
 	exps, err := a.parseExpressionList()
 	if err != nil {
 		return nil, err
 	}
+	call.ExpressionList = *exps
+	call.XML.AddChild(exps)
+	call.XML.AddChild(a.popToken()) // ")"
 
-	return &SubroutineCall{
-		ClassOrVarName: classOrVarName,
-		SubroutineName: subroutineName,
-		ExpressionList: exps,
-	}, nil
+	return &call, nil
 }
 
-func (a *analyzer) parseExpressionList() ([]Expression, error) {
-	token := a.popToken()
-	if err := assertToken(token, TokenTypeSymbol, "("); err != nil {
-		return nil, err
+func (a *analyzer) parseExpressionList() (*ExpressionList, error) {
+	exps := ExpressionList{XML: XMLElm{Name: "expressionList", Children: []XMLElm{}}}
+	if checkToken(a.topToken(), TokenTypeSymbol, ")") {
+		return &exps, nil
 	}
 
-	token = a.topToken()
-	if token.Type == TokenTypeSymbol && token.Value == ")" {
-		a.popToken()
-		return nil, nil
-	}
-
-	var exps []Expression
 	for {
 		exp, err := a.parseExpression()
 		if err != nil {
 			return nil, err
 		}
+		exps.XML.AddChild(exp)
 
-		exps = append(exps, *exp)
+		exps.Expressions = append(exps.Expressions, *exp)
 
-		token = a.popToken()
+		token := a.topToken()
 		if err := assertToken(token, TokenTypeSymbol, ",", ")"); err != nil {
 			return nil, err
 		}
-		if token.Value == ")" {
-			break
+		if token.Value == "," {
+			exps.XML.AddChild(a.popToken())
+			continue
 		}
+		break
+
 	}
-	return exps, nil
+	return &exps, nil
 }
 
 func (a *analyzer) topToken() *Token {
@@ -901,4 +1053,126 @@ func assertToken(token *Token, expectedType TokenType, candidateValues ...string
 		return fmt.Errorf(str)
 	}
 	return nil
+}
+
+func (x *Class) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *ClassVarDec) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *SubroutineDec) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *ParameterList) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *Parameter) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *SubroutineBody) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *VarDec) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *Statements) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *Statement) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	switch x.Type {
+	case StatementTypeLet:
+		return x.LetStatement.ToXML()
+	case StatementTypeIf:
+		return x.IfStatement.ToXML()
+	case StatementTypeWhile:
+		return x.WhileStatement.ToXML()
+	case StatementTypeDo:
+		return x.DoStatement.ToXML()
+	case StatementTypeReturn:
+		return x.ReturnStatement.ToXML()
+	default:
+		return nil
+	}
+}
+func (x *LetStatement) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *IfStatement) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *WhileStatement) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *DoStatement) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *ReturnStatement) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *Expression) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *Term) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *SubroutineCall) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
+}
+func (x *ExpressionList) ToXML() *XMLElm {
+	if x == nil {
+		return nil
+	}
+	return &x.XML
 }
