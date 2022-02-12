@@ -22,12 +22,12 @@ func (e *Node) AddChild(c NodeIface) {
 		return
 	}
 
-	xml := c.ToNode()
-	if xml == nil {
+	node := c.ToNode()
+	if node == nil {
 		return
 	}
 
-	e.Children = append(e.Children, *xml)
+	e.Children = append(e.Children, *node)
 }
 
 func (e *Node) ToNode() *Node {

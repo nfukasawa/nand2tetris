@@ -96,9 +96,9 @@ func collectSourceFiles(inputs []string) ([]string, error) {
 	return srcs, nil
 }
 
-func writeXML(path string, xml *compiler.Node) error {
+func writeXML(path string, node *compiler.Node) error {
 	buf := bytes.NewBuffer(nil)
-	if err := xml.MarshalXML(buf); err != nil {
+	if err := node.MarshalXML(buf); err != nil {
 		return err
 	}
 	if err := writeFile(path, buf); err != nil {

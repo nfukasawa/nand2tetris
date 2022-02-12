@@ -850,7 +850,7 @@ func (a *analyzer) parseExpression() (*Expression, error) {
 
 func (a *analyzer) parseTerm() (*Term, error) {
 
-	xml := Node{Name: "term"}
+	node := Node{Name: "term"}
 
 	token := a.popToken()
 	switch {
@@ -859,16 +859,16 @@ func (a *analyzer) parseTerm() (*Term, error) {
 		if err != nil {
 			return nil, fmt.Errorf("integerConstant parse error: %+v", token)
 		}
-		xml.AddChild(token)
-		return &Term{Type: TermTypeIntegerConst, IntegerConst: &i, Node: xml}, nil
+		node.AddChild(token)
+		return &Term{Type: TermTypeIntegerConst, IntegerConst: &i, Node: node}, nil
 
 	case checkToken(token, TokenTypeStringConst):
-		xml.AddChild(token)
-		return &Term{Type: TermTypeStringConst, StringConst: &token.Value, Node: xml}, nil
+		node.AddChild(token)
+		return &Term{Type: TermTypeStringConst, StringConst: &token.Value, Node: node}, nil
 
 	case checkToken(token, TokenTypeKeyword, "true", "false", "null", "this"):
-		xml.AddChild(token)
-		return &Term{Type: TermTypeKeywordConst, KeywordConstant: &token.Value, Node: xml}, nil
+		node.AddChild(token)
+		return &Term{Type: TermTypeKeywordConst, KeywordConstant: &token.Value, Node: node}, nil
 
 	case checkToken(token, TokenTypeIdentifier):
 		next := a.topToken()
@@ -879,53 +879,53 @@ func (a *analyzer) parseTerm() (*Term, error) {
 			if err != nil {
 				return nil, err
 			}
-			xml.AddChild(call)
-			return &Term{Type: TermTypeSubroutineCall, SubroutineCall: call, Node: xml}, nil
+			node.AddChild(call)
+			return &Term{Type: TermTypeSubroutineCall, SubroutineCall: call, Node: node}, nil
 
 		case checkToken(next, TokenTypeSymbol, "["):
-			xml.AddChild(token)
-			xml.AddChild(a.popToken())
+			node.AddChild(token)
+			node.AddChild(a.popToken())
 			exp, err := a.parseExpression()
 			if err != nil {
 				return nil, err
 			}
-			xml.AddChild(exp)
+			node.AddChild(exp)
 			token := a.popToken()
 			if err := assertToken(token, TokenTypeSymbol, "]"); err != nil {
 				return nil, err
 			}
-			xml.AddChild(token)
-			return &Term{Type: TermTypeVarNameIndex, VarName: &token.Value, Index: exp, Node: xml}, nil
+			node.AddChild(token)
+			return &Term{Type: TermTypeVarNameIndex, VarName: &token.Value, Index: exp, Node: node}, nil
 
 		default:
-			xml.AddChild(token)
-			return &Term{Type: TermTypeVarName, VarName: &token.Value, Node: xml}, nil
+			node.AddChild(token)
+			return &Term{Type: TermTypeVarName, VarName: &token.Value, Node: node}, nil
 		}
 
 	case checkToken(token, TokenTypeSymbol, "("):
-		xml.AddChild(token)
+		node.AddChild(token)
 		exp, err := a.parseExpression()
 		if err != nil {
 			return nil, err
 		}
-		xml.AddChild(exp)
+		node.AddChild(exp)
 		token := a.popToken()
 		if err := assertToken(token, TokenTypeSymbol, ")"); err != nil {
 			return nil, err
 		}
-		xml.AddChild(token)
-		return &Term{Type: TermTypeExpression, Expression: exp, Node: xml}, nil
+		node.AddChild(token)
+		return &Term{Type: TermTypeExpression, Expression: exp, Node: node}, nil
 
 	case checkToken(token, TokenTypeSymbol, "-", "~"):
-		xml.AddChild(token)
+		node.AddChild(token)
 
 		op := UnaryOp(token.Value)
 		term, err := a.parseTerm()
 		if err != nil {
 			return nil, err
 		}
-		xml.AddChild(term)
-		return &Term{Type: TermTypeUnaryOp, UnaryOp: &op, UnaryOpTerm: term, Node: xml}, nil
+		node.AddChild(term)
+		return &Term{Type: TermTypeUnaryOp, UnaryOp: &op, UnaryOpTerm: term, Node: node}, nil
 	default:
 		return nil, fmt.Errorf("term is expected: %+v", token)
 	}
