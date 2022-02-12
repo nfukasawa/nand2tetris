@@ -49,8 +49,8 @@ func main() {
 			return
 		}
 
-		// write tokens
-		if err := writeXML(filepath.Join(opts.Output, filepath.Base(srcBase)+"T.xml"), tokens.ToXML()); err != nil {
+		// write tokens xml
+		if err := writeXML(filepath.Join(opts.Output, filepath.Base(srcBase)+"T.xml"), tokens.ToNode()); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -62,8 +62,8 @@ func main() {
 			return
 		}
 
-		// write tree
-		if err := writeXML(filepath.Join(opts.Output, filepath.Base(srcBase)+".xml"), cls.ToXML()); err != nil {
+		// write tree xml
+		if err := writeXML(filepath.Join(opts.Output, filepath.Base(srcBase)+".xml"), cls.ToNode()); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -96,9 +96,9 @@ func collectSourceFiles(inputs []string) ([]string, error) {
 	return srcs, nil
 }
 
-func writeXML(path string, xml *compiler.XMLElm) error {
+func writeXML(path string, xml *compiler.Node) error {
 	buf := bytes.NewBuffer(nil)
-	if err := xml.Marshal(buf); err != nil {
+	if err := xml.MarshalXML(buf); err != nil {
 		return err
 	}
 	if err := writeFile(path, buf); err != nil {

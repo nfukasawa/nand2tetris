@@ -205,21 +205,21 @@ func (t *tokenizer) trimComment(str string) string {
 	return strings.TrimSpace(str)
 }
 
-func (ts Tokens) ToXML() *XMLElm {
+func (ts Tokens) ToNode() *Node {
 	if ts == nil {
 		return nil
 	}
 
-	elm := XMLElm{Name: "tokens"}
+	node := Node{Name: "tokens"}
 	for _, t := range ts {
-		elm.AddChild(t.ToXML())
+		node.AddChild(&t)
 	}
-	return &elm
+	return &node
 }
 
-func (t *Token) ToXML() *XMLElm {
+func (t *Token) ToNode() *Node {
 	if t == nil {
 		return nil
 	}
-	return &XMLElm{Name: string(t.Type), Value: t.Value}
+	return &Node{Name: string(t.Type), Value: t.Value}
 }
