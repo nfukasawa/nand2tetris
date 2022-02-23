@@ -8,17 +8,6 @@ import (
 //go:embed os/*
 var assets embed.FS
 
-var osLibs = []string{
-	"Array",
-	"Keyboard",
-	"Math",
-	"Memory",
-	"Output",
-	"Screen",
-	"String",
-	"Sys",
-}
-
 func OSVMs() <-chan VMReader {
 	ch := make(chan VMReader)
 	entries, err := assets.ReadDir("os")
