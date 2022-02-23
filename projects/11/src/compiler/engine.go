@@ -220,7 +220,7 @@ func (e *engine) compileTerm(t *Term) {
 
 	case TermTypeUnaryOp:
 		e.compileTerm(t.UnaryOpTerm)
-		e.vm.WriteArithmetic(VMCmd(*t.UnaryOp))
+		e.compileUnaryOp(t.UnaryOp)
 	}
 }
 
@@ -280,6 +280,15 @@ func (e *engine) compileOp(op *Op) {
 		e.vm.WriteArithmetic(VMCmdGT)
 	case "=":
 		e.vm.WriteArithmetic(VMCmdEQ)
+	}
+}
+
+func (e *engine) compileUnaryOp(op *UnaryOp) {
+	switch *op {
+	case "-":
+		e.vm.WriteArithmetic(VMCmdNEG)
+	case "~":
+		e.vm.WriteArithmetic(VMCmdNOT)
 	}
 }
 
