@@ -68,6 +68,16 @@ func main() {
 			return
 		}
 	}
+
+	// output os VMs
+	for vm := range compiler.OSVMs() {
+		if err := writeFile(filepath.Join(opts.Output, vm.Name+".vm"), vm); err != nil {
+			vm.Close()
+			fmt.Println(err)
+			return
+		}
+		vm.Close()
+	}
 }
 
 func collectSourceFiles(inputs []string) ([]string, error) {

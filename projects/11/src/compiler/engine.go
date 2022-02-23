@@ -251,6 +251,7 @@ func (e *engine) compileSubroutineCall(call *SubroutineCall) {
 			// コンストラクタ/ファンクション呼び出し
 			// -> className.subroutineName()
 			name = *call.Receiver + "." + call.SubroutineName
+			ClassMethodCalled(*call.Receiver)
 		}
 	}
 
