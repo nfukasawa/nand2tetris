@@ -179,7 +179,7 @@ const (
 )
 
 type SubroutineCall struct {
-	ClassOrVarName *string
+	Receiver       *string
 	SubroutineName string
 	ExpressionList ExpressionList
 

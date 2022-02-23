@@ -745,7 +745,7 @@ func (a *analyzer) parseSubroutineCall() (*SubroutineCall, error) {
 		call.SubroutineName = token.Value
 	case ".":
 		call.Node.AddChild(a.popToken())
-		call.ClassOrVarName = &token.Value
+		call.Receiver = &token.Value
 
 		token := a.popToken()
 		if err := assertToken(token, TokenTypeIdentifier); err != nil {
