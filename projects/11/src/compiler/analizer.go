@@ -679,6 +679,7 @@ func (a *analyzer) parseTerm() (*Term, error) {
 			return &Term{Type: TermTypeSubroutineCall, SubroutineCall: call, Node: node}, nil
 
 		case checkToken(next, TokenTypeSymbol, "["):
+			varName := token.Value
 			node.AddChild(token)
 			node.AddChild(a.popToken())
 			exp, err := a.parseExpression()
@@ -691,7 +692,7 @@ func (a *analyzer) parseTerm() (*Term, error) {
 				return nil, err
 			}
 			node.AddChild(token)
-			return &Term{Type: TermTypeVarNameIndex, VarName: &token.Value, Index: exp, Node: node}, nil
+			return &Term{Type: TermTypeVarNameIndex, VarName: &varName, Index: exp, Node: node}, nil
 
 		default:
 			node.AddChild(token)

@@ -290,6 +290,10 @@ func (e *engine) compileUnaryOp(op *UnaryOp) {
 }
 
 func sym2VM(s *Symbol) (VMSeg, int64) {
+	if s == nil {
+		return VMSeg(""), -1
+	}
+
 	switch s.Kind {
 	case SymKindStatic:
 		return VMSegSTATIC, s.Index
