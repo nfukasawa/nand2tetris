@@ -50,7 +50,7 @@ func main() {
 		}
 
 		// write tokens xml
-		if err := writeXML(filepath.Join(opts.Output, filepath.Base(srcBase)+"T.xml"), tokens.ToNode()); err != nil {
+		if err := writeXML(filepath.Join(opts.Output, srcBase+"T.xml"), tokens.ToNode()); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -63,7 +63,7 @@ func main() {
 		}
 
 		// write tree xml
-		if err := writeXML(filepath.Join(opts.Output, filepath.Base(srcBase)+".xml"), cls.ToNode()); err != nil {
+		if err := writeXML(filepath.Join(opts.Output, srcBase+".xml"), cls.ToNode()); err != nil {
 			fmt.Println(err)
 			return
 		}
