@@ -2,7 +2,7 @@ package compiler
 
 import "fmt"
 
-func Compile(vm *JackVM, cls *Class) error {
+func CompileClass(vm *JackVM, cls *Class) error {
 	newEngine(vm, cls).compile()
 	return vm.Err()
 }
