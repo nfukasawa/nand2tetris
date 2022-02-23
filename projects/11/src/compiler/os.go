@@ -12,9 +12,10 @@ func OSVMs() <-chan VMReader {
 	ch := make(chan VMReader)
 	entries, err := assets.ReadDir("os")
 	go func() {
+		defer close(ch)
+
 		if err != nil {
 			ch <- VMReader{ReadCloser: errorReadCloser(err)}
-			close(ch)
 			return
 		}
 
@@ -26,7 +27,6 @@ func OSVMs() <-chan VMReader {
 			}
 			ch <- VMReader{Name: e.Name(), ReadCloser: f}
 		}
-		close(ch)
 	}()
 	return ch
 
