@@ -752,6 +752,7 @@ func (a *analyzer) parseSubroutineCall() (*SubroutineCall, error) {
 		if err := assertToken(token, TokenTypeIdentifier); err != nil {
 			return nil, err
 		}
+		call.SubroutineName = token.Value
 		call.Node.AddChild(token)
 	}
 
