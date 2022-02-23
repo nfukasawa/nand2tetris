@@ -19,20 +19,10 @@ var osLibs = []string{
 	"Sys",
 }
 
-var usedLibs = map[string]struct{}{}
-
-func ClassMethodCalled(name string) {
-	for _, osLib := range osLibs {
-		if name == osLib {
-			usedLibs[name] = struct{}{}
-		}
-	}
-}
-
 func OSVMs() <-chan VMReader {
 	ch := make(chan VMReader)
 	go func() {
-		for lib := range usedLibs {
+		for _, lib := range osLibs {
 			f, err := assets.Open("os/" + lib + ".vm")
 			if err != nil {
 				ch <- VMReader{Name: lib, ReadCloser: io.NopCloser(&errReader{err: err})}

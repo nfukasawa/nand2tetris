@@ -230,7 +230,6 @@ func (e *engine) compileSubroutineCall(call *SubroutineCall) {
 
 	if call.Receiver == nil {
 		// クラス内のメソッド呼び出し
-		// -> methodName()
 		switch e.currentSubroutine {
 		case SubRoutineTypeConstructor:
 			e.vm.WritePush(VMSegPOINTER, 0)
@@ -243,15 +242,12 @@ func (e *engine) compileSubroutineCall(call *SubroutineCall) {
 		sym := e.symbols.Get(*call.Receiver)
 		if sym != nil {
 			// 他のクラスのメソッド呼び出し
-			// -> varName.methodName()
 			e.vm.WritePush(sym2VM(sym))
 			name = sym.Type + "." + call.SubroutineName
 			numArgs++
 		} else {
 			// コンストラクタ/ファンクション呼び出し
-			// -> className.subroutineName()
 			name = *call.Receiver + "." + call.SubroutineName
-			ClassMethodCalled(*call.Receiver)
 		}
 	}
 
