@@ -186,6 +186,7 @@ func (a *analyzer) parseSubroutineDec() (*SubroutineDec, error) {
 	if err != nil {
 		return nil, err
 	}
+	dec.ParameterList = *params
 	dec.Node.AddChild(params)
 	dec.Node.AddChild(a.popToken()) // ")"
 
