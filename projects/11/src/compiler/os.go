@@ -6,7 +6,7 @@ import (
 )
 
 //go:embed os/*
-var libs embed.FS
+var assets embed.FS
 
 var osLibs = []string{
 	"Array",
@@ -33,7 +33,7 @@ func OSVMs() <-chan VMReader {
 	ch := make(chan VMReader)
 	go func() {
 		for lib := range usedLibs {
-			f, err := libs.Open("os/" + lib + ".vm")
+			f, err := assets.Open("os/" + lib + ".vm")
 			if err != nil {
 				ch <- VMReader{Name: lib, ReadCloser: io.NopCloser(&errReader{err: err})}
 				break
