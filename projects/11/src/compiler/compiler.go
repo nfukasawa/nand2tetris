@@ -43,8 +43,8 @@ func Compile(inputs []string, outDir string) error {
 		}
 
 		// output
-		srcBase := strings.TrimSuffix(filepath.Base(src), ".jack")
-		if err := writeFile(filepath.Join(outDir, filepath.Base(srcBase)+".vm"), out); err != nil {
+		name := strings.TrimSuffix(filepath.Base(src), ".jack") + ".vm"
+		if err := writeFile(filepath.Join(outDir, name), out); err != nil {
 			fmt.Println(err)
 			return err
 		}
@@ -52,7 +52,7 @@ func Compile(inputs []string, outDir string) error {
 
 	// output os VMs
 	for vm := range OSVMs() {
-		if err := writeFile(filepath.Join(outDir, vm.Name+".vm"), vm); err != nil {
+		if err := writeFile(filepath.Join(outDir, vm.Name), vm); err != nil {
 			vm.Close()
 			return err
 		}

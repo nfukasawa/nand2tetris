@@ -21,14 +21,21 @@ var osLibs = []string{
 
 func OSVMs() <-chan VMReader {
 	ch := make(chan VMReader)
+	entries, err := assets.ReadDir("os")
 	go func() {
-		for _, lib := range osLibs {
-			f, err := assets.Open("os/" + lib + ".vm")
+		if err != nil {
+			ch <- VMReader{ReadCloser: errorReadCloser(err)}
+			close(ch)
+			return
+		}
+
+		for _, e := range entries {
+			f, err := assets.Open("os/" + e.Name())
 			if err != nil {
-				ch <- VMReader{Name: lib, ReadCloser: io.NopCloser(&errReader{err: err})}
+				ch <- VMReader{Name: e.Name(), ReadCloser: errorReadCloser(err)}
 				break
 			}
-			ch <- VMReader{Name: lib, ReadCloser: f}
+			ch <- VMReader{Name: e.Name(), ReadCloser: f}
 		}
 		close(ch)
 	}()
@@ -43,6 +50,10 @@ type VMReader struct {
 
 type errReader struct {
 	err error
+}
+
+func errorReadCloser(err error) io.ReadCloser {
+	return io.NopCloser(&errReader{err: err})
 }
 
 func (r *errReader) Read(p []byte) (n int, err error) {
