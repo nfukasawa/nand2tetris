@@ -8,13 +8,36 @@
  * Note: Jack compilers implement multiplication and division using OS method calls.
  */
 class Math {
+    static int pow2;
 
     /** Initializes the library. */
     function void init() {
+        let pow2 = Array.new(16);
+        let pow2[0] = 1;
+        let pow2[1] = 2;
+        let pow2[2] = 4;
+        let pow2[3] = 8;
+        let pow2[4] = 16;
+        let pow2[5] = 32;
+        let pow2[6] = 64;
+        let pow2[7] = 128;
+        let pow2[8] = 256;
+        let pow2[9] = 512;
+        let pow2[10] = 1024;
+        let pow2[11] = 2048;
+        let pow2[12] = 4096;
+        let pow2[13] = 8192;
+        let pow2[14] = 16384;
+        let pow2[15] = 16384+16384;
+        return;
     }
 
     /** Returns the absolute value of x. */
     function int abs(int x) {
+        if (x < 0) {
+            return -x;
+        }
+        return x;
     }
 
     /** Returns the product of x and y. 
@@ -23,6 +46,18 @@ class Math {
      *  the Jack expressions x*y and multiply(x,y) return the same value.
      */
     function int multiply(int x, int y) {
+        var int sum, shiftedX, j;
+        let sum = 0;
+        let shiftedX = x;
+        let j = 0;
+        while( j < 16 ) {
+            if(Math.bit(y, j)) {
+                let sum = sum + shiftedX;
+            }
+            let shiftedX = shiftedX + shiftedX;
+            let j = j + 1;
+        }
+        return sum;
     }
 
     /** Returns the integer part of x/y.
@@ -31,17 +66,63 @@ class Math {
      *  the Jack expressions x/y and divide(x,y) return the same value.
      */
     function int divide(int x, int y) {
+        var int negX, negY, q, qy, ret;
+        let negX = x < 0;
+        let negY = y < 0;
+        let x = Math.abs(x);
+        let y = Math.abs(y);
+
+        if(y > x) {
+            return 0;
+        }
+
+        let q = Math.divide(x, y+y);
+        let qy = q*y;
+        if(x-(qy+qy) < y) {
+            let ret = q+q;
+        } else {
+            let ret = q+q+1;
+        }
+        
+        if(negX = negY) {
+            return ret;
+        }
+        return -ret;
     }
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
+        var int j, y, z, z2;
+        let y = 0;
+        let j = 7;
+        while(~(j < 0)) {
+            let z = y + pow2[j];
+            let z2 = z * z;
+            if( ~(z2 > x) & (z2 > 0) ) {
+                let y = z;
+            }
+            let j = j - 1;
+        }
+        return y;
     }
 
     /** Returns the greater number. */
     function int max(int a, int b) {
+        if (a > b) {
+            return a;
+        }
+        return b;
     }
 
     /** Returns the smaller number. */
     function int min(int a, int b) {
+        if (a > b) {
+            return b;
+        }
+        return a;
+    }
+
+    function boolean bit(int x, int n) {
+        return ~((x & pow2[n]) = 0);
     }
 }
