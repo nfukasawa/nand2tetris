@@ -44,9 +44,9 @@ class Keyboard {
      */
     function char readChar() {
         var char c;
-        while( Keyboard.keyPressed() = 0 ) {}
+        while(Keyboard.keyPressed() = 0) {}
         let c = Keyboard.keyPressed();
-        while( ~(Keyboard.keyPressed() = 0) ) {}
+        while(~(Keyboard.keyPressed() = 0) ) {}
         do Output.printChar(c);
         return c;
     }
@@ -64,7 +64,7 @@ class Keyboard {
         
         let line = String.new(64);
         let c = Keyboard.readChar();
-        while( ~(c = String.newLine()) ) {
+        while(~(c = String.newLine())) {
             if(c = String.backSpace()) {
                 do line.eraseLastChar();
             }
