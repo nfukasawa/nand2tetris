@@ -93,7 +93,7 @@ class Screen {
 
         // horizontal
         if (dy = 0) {
-            // TODO: 水平方向には1word単位で濡れる
+            // TODO: draw by word units for the horizontal
             while(~(a > dx)) {
                 do Screen.drawPixel(x1 + (ix * a), y1);
                 let a = a + 1;
@@ -133,7 +133,7 @@ class Screen {
         let y = y1;
         while(~(y > y2)) {
             let x = x1;
-            // TODO: 水平方向には1word単位で濡れる
+            // TODO: draw by word units for the horizontal
             while(~(x > x2)) {
                 do Screen.drawPixel(x, y);
                 let x = x + 1;
