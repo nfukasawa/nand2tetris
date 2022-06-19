@@ -9,31 +9,82 @@
  * consists of 32,768 words, each holding a 16-bit binary number.
  */ 
 class Memory {
+    static Array memory;
+    static Array freeList;
 
     /** Initializes the class. */
     function void init() {
+        var Array seg;
+
+        let memory = 0;
+
+        let freeList = 2048;
+        let freeList[0] = 16384 - freeList;
+        let freeList[1] = null;
         return;
     }
 
     /** Returns the RAM value at the given address. */
     function int peek(int address) {
-         return 0;
+        return memory[address];
     }
 
     /** Sets the RAM value at the given address to the given value. */
     function void poke(int address, int value) {
-         return;
+        let memory[address] = value;
+        return;
     }
 
     /** Finds an available RAM block of the given size and returns
      *  a reference to its base address. */
     function int alloc(int size) {
-         return 0;
+        var Array seg, selected, prev, selected_prev, block;
+        var int diff, minDiff;
+
+        let seg = freeList;
+        let selected = seg;
+        let prev = null;
+        let selected_prev = null;
+        let minDiff = 16384;
+
+        while(~(seg[1] = null)) {
+            let diff = seg[0] - size - 2;
+            if ((diff > -1) & (diff < minDiff)) {
+                let selected = seg;
+                let selected_prev = prev;
+                let minDiff = diff;
+            }
+            let prev = seg;
+            let seg = seg[1];
+        }
+
+        if (selected = null) {
+            return -1;
+        }
+
+        if (selected[0] > ((size + 1) * 2)) {
+            let block = selected + selected[0] - size;
+            let block[-1] = size + 1;
+            let selected[0] = selected[0] - size - 1;
+            return block;
+        }
+
+        if (selected_prev = null) {
+            let freeList = selected[1];
+        } else {
+            let selected_prev[1] = selected[1];
+        }
+        return selected + 1;
     }
 
     /** De-allocates the given object (cast as an array) by making
      *  it available for future allocations. */
     function void deAlloc(Array o) {
-         return;
-    }    
+        // TODO: collect consecutive free segments
+        var Array seg;
+        let seg = o - 1;
+        let seg[1] = freeList;
+        let freeList = seg;
+        return;
+    }
 }
