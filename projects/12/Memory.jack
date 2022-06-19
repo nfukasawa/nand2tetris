@@ -38,20 +38,20 @@ class Memory {
     /** Finds an available RAM block of the given size and returns
      *  a reference to its base address. */
     function int alloc(int size) {
-        var Array seg, selected, prev, selected_prev, block;
+        var Array seg, selected, prev, selectedPrev, block;
         var int diff, minDiff;
 
         let seg = freeList;
         let selected = seg;
         let prev = null;
-        let selected_prev = null;
+        let selectedPrev = null;
         let minDiff = 16384;
 
         while(~(seg[1] = null)) {
             let diff = seg[0] - size - 2;
             if ((diff > -1) & (diff < minDiff)) {
                 let selected = seg;
-                let selected_prev = prev;
+                let selectedPrev = prev;
                 let minDiff = diff;
             }
             let prev = seg;
@@ -69,10 +69,10 @@ class Memory {
             return block;
         }
 
-        if (selected_prev = null) {
+        if (selectedPrev = null) {
             let freeList = selected[1];
         } else {
-            let selected_prev[1] = selected[1];
+            let selectedPrev[1] = selected[1];
         }
         return selected + 1;
     }
