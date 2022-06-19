@@ -10,34 +10,151 @@
  * the screen is indexed (0,0).
  */
 class Screen {
+    static Array screen;
+    static boolean color; // black: true, white: false
+    static Array pow2;
 
     /** Initializes the Screen. */
     function void init() {
+        let screen = 16384;
+        let color = true;
+
+        let pow2 = Array.new(16);
+        let pow2[0] = 1;
+        let pow2[1] = 2;
+        let pow2[2] = 4;
+        let pow2[3] = 8;
+        let pow2[4] = 16;
+        let pow2[5] = 32;
+        let pow2[6] = 64;
+        let pow2[7] = 128;
+        let pow2[8] = 256;
+        let pow2[9] = 512;
+        let pow2[10] = 1024;
+        let pow2[11] = 2048;
+        let pow2[12] = 4096;
+        let pow2[13] = 8192;
+        let pow2[14] = 16384;
+        let pow2[15] = 16384+16384;
+        return;
     }
 
     /** Erases the entire screen. */
     function void clearScreen() {
+        var int i;
+        let i = 0;
+        while(i < 8192) { // 512*256/16
+            let screen[i] = 0;
+            let i = i + 1;
+        }
+        return;
     }
 
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
+        let color = b;
+        return;
     }
 
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
+        var int addr, mask;
+        let addr = (y * 32) + (x / 16); // y*(512/16) + x/(256/16)
+        let mask = pow2[x & 15];
+
+        if (color) {
+            let screen[addr] = screen[addr] | mask;
+        } else {
+            let screen[addr] = screen[addr] & ~mask;
+        }
+        return;
     }
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
     function void drawLine(int x1, int y1, int x2, int y2) {
+        var int dx, dy, ix, iy, a, b, adyMinusbdx;
+
+        let dx = Math.abs(x1 - x2);
+        let dy = Math.abs(y1 - y2);
+
+        let ix = 1;
+        if (x1 > x2) {
+            let ix = -1;
+        }
+
+        let iy = 1;
+        if (y1 > y2) {
+            let iy = -1;
+        }
+
+        let a = 0;
+        let b = 0;
+
+        // horizontal
+        if (dy = 0) {
+            // TODO: 水平方向には1word単位で濡れる
+            while(~(a > dx)) {
+                do Screen.drawPixel(x1 + (ix * a), y1);
+                let a = a + 1;
+            }
+            return;
+        }
+
+        // verical
+        if (dx = 0) {
+            while(~(b > dy)) {
+                do Screen.drawPixel(x1, y1 + (iy * b));
+                let b = b + 1;
+            }
+            return;
+        }
+
+        // diagonal
+        let adyMinusbdx = 0;
+        while((~(a > dx)) & (~(b > dy))) {
+            do Screen.drawPixel(x1 + (ix * a),  y1 + (iy * b));
+            if (adyMinusbdx < 0) {
+                let a = a + 1;
+                let adyMinusbdx = adyMinusbdx + dy;
+            } else {
+                let b = b + 1;
+                let adyMinusbdx = adyMinusbdx - dx;
+            }
+        }
+        return;
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      * and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
+        var int x, y;
+
+        let y = y1;
+        while(~(y > y2)) {
+            let x = x1;
+            // TODO: 水平方向には1word単位で濡れる
+            while(~(x > x2)) {
+                do Screen.drawPixel(x, y);
+                let x = x + 1;
+            }
+            let y = y + 1;
+        }
+        return;
     }
 
     /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
     function void drawCircle(int x, int y, int r) {
+        var int dx, dy;
+        var int r2;
+
+        let dy = -r;
+        let r2 = r * r;
+        while(~(dy > r)) {
+            let dx = Math.sqrt(r2 - (dy * dy));
+            do Screen.drawLine(x - dx, y + dy, x + dx, y + dy);
+            let dy = dy + 1;
+        }
+        return;
     }
 }

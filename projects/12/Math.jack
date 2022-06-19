@@ -8,7 +8,7 @@
  * Note: Jack compilers implement multiplication and division using OS method calls.
  */
 class Math {
-    static int pow2;
+    static Array pow2;
 
     /** Initializes the library. */
     function void init() {
@@ -51,7 +51,7 @@ class Math {
         let shiftedX = x;
         let j = 0;
         while( j < 16 ) {
-            if(Math.bit(y, j)) {
+            if(~((y & pow2[j]) = 0)) {
                 let sum = sum + shiftedX;
             }
             let shiftedX = shiftedX + shiftedX;
@@ -120,9 +120,5 @@ class Math {
             return b;
         }
         return a;
-    }
-
-    function boolean bit(int x, int n) {
-        return ~((x & pow2[n]) = 0);
     }
 }

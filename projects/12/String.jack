@@ -28,7 +28,7 @@ class String {
     /** Disposes this string. */
     method void dispose() {
         if (cap > 0) {
-            do Array.deAlloc(buf);
+            do buf.dispose();
         }
         return;
     }
@@ -92,7 +92,7 @@ class String {
         let val = 0;
         while(i < cur) {
             let c = buf[i];
-            if ((c < 48) | ~(c > 57)) { // c < '0' | c > '9'
+            if ((c < 48) | (c > 57)) { // c < '0' | c > '9'
                 return sign * val;
             }
             let val = (val * 10) + (c - 48);
@@ -103,8 +103,7 @@ class String {
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
-        var int d, q, r;
-        var char c;
+        var int d, q;
 
         let cur = 0;
         if (val < 0) {
@@ -113,16 +112,15 @@ class String {
         }
 
         let d = 10;
-        while((val / d) > 0) {
+        while((val / d) > 10) {
             let d = d * 10;
         }
 
         while(d > 0) {
             let q = val / d;
-            let r = val - (q * d);
-            let c = (q + 48); // q + 'a'
+            let val = val - (q * d);
             let d = d / 10;
-            do appendChar(c);
+            do appendChar(q + 48);  // q + '0'
         }
         return;
     }

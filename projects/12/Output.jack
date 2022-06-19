@@ -19,10 +19,12 @@ class Output {
     // Character map for displaying characters
     static Array charMaps;
     static int col, row;
-     static int pow2;
+    static Array pow2;
 
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
+        do Output.initMap();
+
         let pow2 = Array.new(8);
         let pow2[0] = 1;
         let pow2[1] = 2;
@@ -83,7 +85,7 @@ class Output {
         do Output.create(64,30,51,51,59,59,59,27,3,30,0,0);  // @
         do Output.create(63,30,51,51,24,12,12,0,12,12,0,0);  // ?
 
-        do Output.create(65,0,0,0,0,0,0,0,0,0,0,0);          // A ** TO BE FILLED **
+        do Output.create(65,12,30,51,51,63,51,51,51,51,0,0); // A
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
         do Output.create(68,15,27,51,51,51,51,51,27,15,0,0); // D
@@ -188,8 +190,8 @@ class Output {
     /** Moves the cursor to the j-th column of the i-th row,
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
-        let col = i;
-        let row = j;
+        let col = j;
+        let row = i;
         return;
     }
 
@@ -203,6 +205,7 @@ class Output {
         let x0 = col * 8;
         let y0 = row * 11;
         
+        let y = 0;
         while (y < 11) {
             let x = 0;
             while (x < 8) {
@@ -214,15 +217,16 @@ class Output {
             let y = y + 1;
         }
 
-        if (col = 62) {
+        if (col = 63) {
             let col = 0;
+            if (row = 22) {
+                let row = 0;
+                return;
+            }
             let row = row + 1;
-        } else {
-            let col = col + 1;
+            return;
         }
-        if (row > 22) {
-            let row = 0;
-        }
+        let col = col + 1;
         return;
     }
 

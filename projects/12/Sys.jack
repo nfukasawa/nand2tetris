@@ -30,9 +30,9 @@ class Sys {
     function void wait(int duration) {
         var int i;
         while (duration > 0) {
-            let i = 100;
+            let i = 80;
             while (i > 0) {
-                let i = i + 1;
+                let i = i - 1;
             }
             let duration = duration - 1;
         }

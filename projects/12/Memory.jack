@@ -12,23 +12,28 @@ class Memory {
 
     /** Initializes the class. */
     function void init() {
+        return;
     }
 
     /** Returns the RAM value at the given address. */
     function int peek(int address) {
+         return 0;
     }
 
     /** Sets the RAM value at the given address to the given value. */
     function void poke(int address, int value) {
+         return;
     }
 
     /** Finds an available RAM block of the given size and returns
      *  a reference to its base address. */
     function int alloc(int size) {
+         return 0;
     }
 
     /** De-allocates the given object (cast as an array) by making
      *  it available for future allocations. */
     function void deAlloc(Array o) {
+         return;
     }    
 }

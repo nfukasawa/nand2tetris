@@ -14,5 +14,6 @@ CURDIR=$(
 
 TARGET=$1
 
+cp ${CURDIR}/os/*.vm ${CURDIR}/${TARGET}Test
 cp ${CURDIR}/${TARGET}.jack ${CURDIR}/${TARGET}Test
 ${CURDIR}/../../tools/JackCompiler.sh ${CURDIR}/${TARGET}Test
